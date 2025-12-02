@@ -1,0 +1,41 @@
+# Project Rules & AI Assistant Guidelines
+
+## 1. General Behavior
+- **Language:** English ONLY for all code, comments, documentation, and commit messages.
+- **Conciseness:** Be brief and direct. Avoid unnecessary conversational filler.
+- **Proactivity:** Anticipate next steps but ask before major architectural changes.
+
+## 2. Code Quality & Style
+- **Standards:** Follow PEP 8 for Python.
+- **Principles:** Apply SOLID, DRY (Don't Repeat Yourself), and KISS (Keep It Simple, Stupid) principles.
+- **Clean Code:**
+  - Meaningful variable and function names.
+  - Small, focused functions (single responsibility).
+  - Avoid magic numbers/strings; use constants.
+
+## 3. Testing (CRITICAL)
+- **Mandatory:** Unit tests are REQUIRED for all critical functionality (trading logic, data processing, risk checks).
+- **Framework:** Use `pytest`.
+- **Coverage:** Aim for high coverage on core modules.
+- **Mocking:** Use mocks for external services (IBKR, APIs, DB) to ensure tests are fast and deterministic.
+
+## 4. Documentation
+- **Docstrings:** Required for all public modules, classes, and functions. Use Google style or NumPy style.
+- **Comments:** Explain "why", not "what". Avoid obvious comments.
+- **README:** Every major directory (phase) should have a brief README explaining its purpose.
+
+## 5. Error Handling & Logging
+- **Exceptions:** Use custom exception classes for domain-specific errors.
+- **Logging:** Use the standard `logging` library. Structured logging is preferred.
+- **No Silent Failures:** Never use bare `try-except` blocks. Log or re-raise errors.
+
+## 6. Technology Stack
+- **Language:** Python 3.10+
+- **Containerization:** Docker & Docker Compose
+- **Database:** TimescaleDB (PostgreSQL extension)
+- **Caching/Messaging:** Redis
+- **Architecture:** MCP (Model Context Protocol) for agents.
+
+## 7. Workflow
+- **Phased Implementation:** Follow the roadmap phases strictly.
+- **Validation:** Verify each step before moving to the next.

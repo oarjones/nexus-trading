@@ -1,0 +1,296 @@
+# ============================================
+# Trading Bot Project - .gitignore
+# ============================================
+
+# ============================================
+# SECURITY - CRITICAL (API Keys, Credentials)
+# ============================================
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+credentials/
+config/secrets.yaml
+config/secrets.json
+config/*.secret.*
+*_credentials.json
+*_api_key*
+.ibkr_credentials
+.kraken_credentials
+
+# ============================================
+# Python
+# ============================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
+.conda/
+conda-env/
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+pytest_cache/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre
+.pyre/
+
+# pytype
+.pytype/
+
+# Ruff
+.ruff_cache/
+
+# ============================================
+# Node.js / MCP Servers
+# ============================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+.npm
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# ============================================
+# Data Files (Large/Sensitive)
+# ============================================
+data/raw/
+data/processed/
+data/external/
+data/interim/
+data/cache/
+*.csv
+*.parquet
+*.feather
+*.h5
+*.hdf5
+*.pickle
+*.pkl
+!data/.gitkeep
+!tests/fixtures/*.csv
+
+# Market data cache
+market_data/
+historical_data/
+tick_data/
+
+# ============================================
+# Machine Learning / Models
+# ============================================
+models/trained/
+models/checkpoints/
+*.h5
+*.hdf5
+*.pkl
+*.joblib
+*.onnx
+*.pt
+*.pth
+*.safetensors
+mlruns/
+mlflow/
+wandb/
+*.mlmodel
+tensorboard_logs/
+lightning_logs/
+
+# Jupyter / IPython
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+profile_default/
+ipython_config.py
+*.ipynb
+!notebooks/examples/*.ipynb
+
+# ============================================
+# Databases (Local)
+# ============================================
+*.db
+*.sqlite
+*.sqlite3
+*.sql
+pg_data/
+redis_data/
+influxdb_data/
+timescaledb_data/
+
+# ============================================
+# Docker
+# ============================================
+docker-compose.override.yml
+.docker/
+
+# ============================================
+# IDE / Editors
+# ============================================
+# VSCode
+.vscode/
+!.vscode/settings.json.example
+!.vscode/extensions.json
+*.code-workspace
+
+# PyCharm / JetBrains
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# ============================================
+# OS Generated
+# ============================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+
+# Linux
+.directory
+.Trash-*
+
+# ============================================
+# Logs & Temporary Files
+# ============================================
+logs/
+*.log
+*.log.*
+tmp/
+temp/
+.tmp/
+.temp/
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# Trading specific logs
+trading_logs/
+execution_logs/
+backtest_results/
+!backtest_results/.gitkeep
+
+# ============================================
+# Documentation Build
+# ============================================
+docs/_build/
+docs/site/
+site/
+.mkdocs/
+
+# ============================================
+# Testing
+# ============================================
+.benchmarks/
+test-results/
+test-reports/
+
+# ============================================
+# Misc
+# ============================================
+*.local
+.env.local
+.env.*.local
+
+# Terraform (if used for infrastructure)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+
+# Ansible
+*.retry
+
+# Compressed files (usually large)
+*.zip
+*.tar.gz
+*.rar
+*.7z
