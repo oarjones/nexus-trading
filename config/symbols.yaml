@@ -1,0 +1,168 @@
+# Symbol Configuration
+# Defines the universe of tradable symbols with metadata
+
+symbols:
+  # European Stocks
+  - ticker: SAN.MC
+    name: Banco Santander
+    market: EU
+    source: yahoo
+    timezone: Europe/Madrid
+    currency: EUR
+    asset_type: stock
+  
+  - ticker: BBVA.MC
+    name: Banco Bilbao Vizcaya Argentaria
+    market: EU
+    source: yahoo
+    timezone: Europe/Madrid
+    currency: EUR
+    asset_type: stock
+  
+  - ticker: ITX.MC
+    name: Inditex
+    market: EU
+    source: yahoo
+    timezone: Europe/Madrid
+    currency: EUR
+    asset_type: stock
+  
+  - ticker: IBE.MC
+    name: Iberdrola
+    market: EU
+    source: yahoo
+    timezone: Europe/Madrid
+    currency: EUR
+    asset_type: stock
+  
+  - ticker: REP.MC
+    name: Repsol
+    market: EU
+    source: yahoo
+    timezone: Europe/Madrid
+    currency: EUR
+    asset_type: stock
+  
+  - ticker: SAP.DE
+    name: SAP SE
+    market: EU
+    source: yahoo
+    timezone: Europe/Berlin
+    currency: EUR
+    asset_type: stock
+  
+  - ticker: ASML.AS
+    name: ASML Holding
+    market: EU
+    source: yahoo
+    timezone: Europe/Amsterdam
+    currency: EUR
+    asset_type: stock
+  
+  - ticker: BMW.DE
+    name: BMW AG
+    market: EU
+    source: yahoo
+    timezone: Europe/Berlin
+    currency: EUR
+    asset_type: stock
+  
+  # European ETFs
+  - ticker: EXW1.DE
+    name: iShares STOXX Europe 600
+    market: EU
+    source: yahoo
+    timezone: Europe/Berlin
+    currency: EUR
+    asset_type: etf
+  
+  - ticker: VWCE.DE
+    name: Vanguard FTSE All-World
+    market: EU
+    source: yahoo
+    timezone: Europe/Berlin
+    currency: EUR
+    asset_type: etf
+  
+  - ticker: CSPX.L
+    name: iShares Core S&P 500
+    market: EU
+    source: yahoo
+    timezone: Europe/London
+    currency: GBP
+    asset_type: etf
+  
+  # Forex
+  - ticker: EURUSD=X
+    name: EUR/USD
+    market: FOREX
+    source: yahoo
+    timezone: UTC
+    currency: USD
+    asset_type: forex
+  
+  - ticker: GBPUSD=X
+    name: GBP/USD
+    market: FOREX
+    source: yahoo
+    timezone: UTC
+    currency: USD
+    asset_type: forex
+  
+  - ticker: USDJPY=X
+    name: USD/JPY
+    market: FOREX
+    source: yahoo
+    timezone: UTC
+    currency: JPY
+    asset_type: forex
+  
+  # Cryptocurrency
+  - ticker: BTC-EUR
+    name: Bitcoin EUR
+    market: CRYPTO
+    source: yahoo
+    timezone: UTC
+    currency: EUR
+    asset_type: crypto
+  
+  - ticker: ETH-EUR
+    name: Ethereum EUR
+    market: CRYPTO
+    source: yahoo
+    timezone: UTC
+    currency: EUR
+    asset_type: crypto
+  
+  # US Reference (for benchmarking)
+  - ticker: SPY
+    name: SPDR S&P 500 ETF
+    market: US
+    source: yahoo
+    timezone: America/New_York
+    currency: USD
+    asset_type: etf
+  
+  - ticker: QQQ
+    name: Invesco QQQ Trust
+    market: US
+    source: yahoo
+    timezone: America/New_York
+    currency: USD
+    asset_type: etf
+  
+  - ticker: AAPL
+    name: Apple Inc.
+    market: US
+    source: yahoo
+    timezone: America/New_York
+    currency: USD
+    asset_type: stock
+  
+  - ticker: MSFT
+    name: Microsoft Corporation
+    market: US
+    source: yahoo
+    timezone: America/New_York
+    currency: USD
+    asset_type: stock

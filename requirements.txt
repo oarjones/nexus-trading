@@ -1,0 +1,41 @@
+# Core
+python-dotenv>=1.0.0
+
+# Base de datos
+psycopg2-binary>=2.9.9
+redis>=5.0.0
+influxdb-client>=1.38.0
+sqlalchemy>=2.0.0
+
+# Data
+pandas>=2.1.0
+numpy>=1.26.0
+
+# HTTP
+requests>=2.31.0
+httpx>=0.25.0
+
+# Scheduling
+apscheduler>=3.10.0
+
+# Logging
+structlog>=23.2.0
+
+# Configuración
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+pyyaml>=6.0.1
+
+# Phase 1: Data Pipeline
+# Data providers
+yfinance>=0.2.33
+ib_insync>=0.9.86
+
+# Technical analysis
+pandas-ta>=0.3.14b
+
+# Progress bars
+tqdm>=4.66.0
+
+# Parquet
+pyarrow>=14.0.0

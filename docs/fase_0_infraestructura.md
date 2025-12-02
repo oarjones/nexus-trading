@@ -172,7 +172,7 @@ LOG_LEVEL=DEBUG
 
 ### Tarea 0.3: Crear docker-compose.yml
 
-**Estado:** ⬜ Pendiente
+**Estado:** ✅ Completado
 
 **Objetivo:** Definir servicios de infraestructura en Docker Compose.
 
@@ -282,7 +282,7 @@ docker-compose config  # Debe parsear sin errores
 
 ### Tarea 0.4: Crear scripts de inicialización de BD
 
-**Estado:** ⬜ Pendiente
+**Estado:** ✅ Completado
 
 **Objetivo:** Scripts SQL para crear esquemas y tablas base.
 
@@ -532,7 +532,7 @@ CREATE INDEX IF NOT EXISTS idx_indicators_symbol
 
 ### Tarea 0.5: Levantar infraestructura Docker
 
-**Estado:** ⬜ Pendiente
+**Estado:** ✅ Completado
 
 **Objetivo:** Iniciar todos los servicios y verificar health.
 
@@ -593,7 +593,7 @@ docker-compose ps
 
 ### Tarea 0.6: Configurar Grafana básico
 
-**Estado:** ⬜ Pendiente
+**Estado:** ✅ Completado
 
 **Objetivo:** Dashboard inicial de health del sistema.
 
@@ -673,7 +673,7 @@ providers:
 
 ### Tarea 0.7: Crear script de verificación
 
-**Estado:** ⬜ Pendiente
+**Estado:** ✅ Completado
 
 **Objetivo:** Script que valida toda la infraestructura.
 
@@ -860,7 +860,7 @@ python scripts/verify_infra.py
 
 ### Tarea 0.8: Crear requirements.txt base
 
-**Estado:** ⬜ Pendiente
+**Estado:** ✅ Completado
 
 **Objetivo:** Dependencias Python para todo el proyecto.
 
@@ -936,14 +936,14 @@ pip list  # Verificar instalación
 Fase 0: Infraestructura Base
 ════════════════════════════
 
-[ ] Tarea 0.1: Estructura de directorios
-[ ] Tarea 0.2: Archivo .env configurado
-[ ] Tarea 0.3: docker-compose.yml creado
-[ ] Tarea 0.4: Scripts SQL de inicialización
-[ ] Tarea 0.5: Servicios Docker running
-[ ] Tarea 0.6: Grafana con dashboard básico
-[ ] Tarea 0.7: Script de verificación pasa
-[ ] Tarea 0.8: Requirements instalados
+[X ] Tarea 0.1: Estructura de directorios
+[X ] Tarea 0.2: Archivo .env configurado
+[X ] Tarea 0.3: docker-compose.yml creado
+[X ] Tarea 0.4: Scripts SQL de inicialización
+[X ] Tarea 0.5: Servicios Docker running
+[X ] Tarea 0.6: Grafana con dashboard básico
+[X ] Tarea 0.7: Script de verificación pasa
+[X ] Tarea 0.8: Requirements instalados
 
 Gate de avance: Todos los items ✅
 ```

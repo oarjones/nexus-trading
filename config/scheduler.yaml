@@ -1,0 +1,27 @@
+# Scheduler Configuration
+
+# Daily data pipeline jobs
+jobs:
+  # Update OHLCV data after EU market close
+  ohlcv_update:
+    enabled: true
+    hour: 18
+    minute: 30
+    timezone: Europe/Madrid
+    description: Download latest OHLCV data from Yahoo Finance
+  
+  # Calculate technical indicators
+  indicators:
+    enabled: true
+    hour: 18
+    minute: 35
+    timezone: Europe/Madrid
+    description: Calculate technical indicators for all symbols
+  
+  # Generate ML features
+  features:
+    enabled: true
+    hour: 18
+    minute: 45
+    timezone: Europe/Madrid
+    description: Generate features for ML models

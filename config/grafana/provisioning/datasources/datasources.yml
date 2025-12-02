@@ -1,0 +1,24 @@
+apiVersion: 1
+
+datasources:
+  - name: PostgreSQL
+    type: postgres
+    url: trading_postgres:5432
+    database: trading
+    user: trading
+    secureJsonData:
+      password: ${DB_PASSWORD}
+    jsonData:
+      sslmode: disable
+      maxOpenConns: 5
+      maxIdleConns: 2
+
+  - name: InfluxDB
+    type: influxdb
+    url: http://trading_influxdb:8086
+    jsonData:
+      version: Flux
+      organization: trading
+      defaultBucket: trading
+    secureJsonData:
+      token: ${INFLUX_TOKEN}
