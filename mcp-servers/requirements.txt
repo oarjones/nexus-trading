@@ -1,0 +1,15 @@
+# MCP Servers Dependencies
+
+# MCP SDK (Official Model Context Protocol)
+mcp[cli]>=1.8.0,<2.0.0
+
+# Inherit from main project requirements
+# (assuming this will be merged with main requirements.txt or requirements are shared)
+
+# Additional dependencies for MCP servers
+httpx>=0.25.0          # HTTP client for inter-server communication
+pydantic>=2.5.0        # Already in main, but listing for clarity
+scipy>=1.11.0          # For technical analysis (S/R levels)
+
+# Note: Database (psycopg2-binary, SQLAlchemy) and Redis dependencies
+# are inherited from main project requirements.txt

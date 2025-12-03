@@ -1,0 +1,51 @@
+# MCP Servers Configuration
+# Configuration for all MCP servers in Nexus Trading
+
+# Market Data Server (Port 3001)
+market-data:
+  port: 3001
+  database_url: ${DATABASE_URL}
+  redis_url: ${REDIS_URL}
+  cache_ttl: 60  # seconds
+
+# Technical Analysis Server (Port 3002)
+technical:
+  port: 3002
+  database_url: ${DATABASE_URL}
+  redis_url: ${REDIS_URL}
+  
+  # Regime detection settings
+  regime:
+    adx_threshold: 25
+    volatility_multiplier: 2
+
+# Risk Management Server (Port 3003)
+risk:
+  port: 3003
+  database_url: ${DATABASE_URL}
+  
+  # Hard limits
+  hard_limits:
+    max_position_pct: 0.20      # 20% max per position
+    max_sector_pct: 0.40        # 40% max per sector
+    max_correlation: 0.70       # Max correlation threshold
+    max_drawdown: 0.15          # 15% max drawdown
+    min_cash_pct: 0.10          # 10% min cash reserve
+  
+  # Position sizing
+  sizing:
+    base_risk_pct: 0.01         # 1% base risk per trade
+    kelly_fraction: 0.25        # Conservative Kelly
+
+# IBKR Trading Server (Port 3004)
+ibkr:
+  port: 3004
+  host: ${IBKR_HOST:-127.0.0.1}
+  tws_port: ${IBKR_PORT:-4002}  # 4002=IB Gateway paper, 4001=Gateway live
+  client_id: 1
+  timeout: 30
+  
+  # Safety settings
+  paper_only: true              # CRITICAL: Only allow paper trading
+  max_order_value: 10000        # Max single order value (USD)
+  retry_interval: 300           # Retry connection every 5 min

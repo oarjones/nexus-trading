@@ -1,0 +1,17 @@
+# Ignore Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Ignore test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Ignore IDE files
+.vscode/
+.idea/
+
+# Ignore logs
+*.log

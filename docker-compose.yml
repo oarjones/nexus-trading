@@ -74,6 +74,78 @@ services:
       - influxdb
     restart: unless-stopped
 
+  # MCP Market Data Server
+  mcp-market-data:
+    build:
+      context: .
+      dockerfile: mcp-servers/Dockerfile
+    container_name: mcp_market_data
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=redis://redis:6379/0
+    command: python -m market-data.server
+    working_dir: /app/mcp-servers
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - trading_network
+
+  # MCP Technical Server
+  mcp-technical:
+    build:
+      context: .
+      dockerfile: mcp-servers/Dockerfile
+    container_name: mcp_technical
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+    command: python -m technical.server
+    working_dir: /app/mcp-servers
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - trading_network
+
+  # MCP Risk Server
+  mcp-risk:
+    build:
+      context: .
+      dockerfile: mcp-servers/Dockerfile
+    container_name: mcp_risk
+    command: python -m risk.server
+    working_dir: /app/mcp-servers
+    restart: unless-stopped
+    networks:
+      - trading_network
+
+  # MCP IBKR Server (optional - requires IB Gateway)
+  mcp-ibkr:
+    build:
+      context: .
+      dockerfile: mcp-servers/Dockerfile
+    container_name: mcp_ibkr
+    environment:
+      - IBKR_HOST=${IBKR_HOST:-host.docker.internal}
+      - IBKR_PORT=${IBKR_PORT:-4002}
+      - IBKR_CLIENT_ID=${IBKR_CLIENT_ID:-1}
+    command: python -m ibkr.server
+    working_dir: /app/mcp-servers
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: on-failure
+    networks:
+      - trading_network
+
+networks:
+  trading_network:
+    driver: bridge
+
+
 volumes:
   postgres_data:
   redis_data:
