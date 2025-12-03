@@ -17,7 +17,6 @@ import pandas_ta as ta
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
 from src.database import DatabasePool
-from src.database import DatabasePool
 
 logger = logging.getLogger(__name__)
 

@@ -67,7 +67,9 @@ async def get_symbols_tool(args: Dict[str, Any]) -> Dict[str, Any]:
                 'name': symbol.name,
                 'market': symbol.market,
                 'currency': symbol.currency,
-                'description': symbol.description
+                'asset_type': symbol.asset_type,
+                'source': symbol.source,
+                'timezone': symbol.timezone
             })
         
         logger.info(f"Retrieved {len(symbols_data)} symbols" + 

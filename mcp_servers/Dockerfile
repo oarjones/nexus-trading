@@ -12,16 +12,16 @@ RUN apt-get update && apt-get install -y \
 
 # Copy requirements
 COPY requirements.txt .
-COPY mcp-servers/requirements.txt mcp-servers-requirements.txt
+COPY mcp_servers/requirements.txt mcp_servers_requirements.txt
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt && \
-    pip install --no-cache-dir -r mcp-servers-requirements.txt
+    pip install --no-cache-dir -r mcp_servers_requirements.txt
 
 # Copy application code
 COPY config/ config/
 COPY src/ src/
-COPY mcp-servers/ mcp-servers/
+COPY mcp_servers/ mcp_servers/
 
 # Create non-root user
 RUN useradd -m -u 1000 mcp && \
@@ -30,4 +30,4 @@ RUN useradd -m -u 1000 mcp && \
 USER mcp
 
 # Default command (override in docker-compose)
-CMD ["python", "-m", "mcp-servers.market-data.server"]
+CMD ["python", "-m", "market_data.server"]

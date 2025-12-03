@@ -105,7 +105,7 @@ async def place_order_tool(
             raise ValueError(f"Unsupported order type: {order_type}")
         
         # Place order
-        trade = ib.placeOrder(contract, order)
+        trade = await ib.placeOrderAsync(contract, order)
         
         # Wait for initial confirmation
         await ib.sleep(1)

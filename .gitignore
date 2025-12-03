@@ -19,7 +19,7 @@ parts/
 sdist/
 var/
 wheels/
-*.egg-info/
+*.egg-info/785
 .installed.cfg
 *.egg
 MANIFEST

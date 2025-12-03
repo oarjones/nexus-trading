@@ -44,7 +44,7 @@ async def get_account_tool(args: Dict[str, Any], ibkr_conn: IBKRConnection) -> D
         ib = await ibkr_conn.ensure_connected()
         
         # Get account summary
-        account_values = ib.accountSummary()
+        account_values = await ib.accountSummaryAsync()
         
         # Extract key values
         account_info = {}
