@@ -21,4 +21,6 @@ datasources:
       organization: trading
       defaultBucket: trading
     secureJsonData:
-      token: ${INFLUX_TOKEN}
+      token: ${INFLUXDB_TOKEN}
+
+
