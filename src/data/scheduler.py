@@ -24,7 +24,7 @@ from src.data.providers.yahoo import YahooProvider
 from src.data.ingestion import OHLCVIngester
 from src.data.indicators import IndicatorEngine
 from src.data.feature_store import FeatureStore
-
+from src.database import DatabasePool
 logger = logging.getLogger(__name__)
 
 

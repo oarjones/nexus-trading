@@ -17,6 +17,8 @@ import pandas as pd
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
 
+from src.database import DatabasePool
+
 logger = logging.getLogger(__name__)
 
 
@@ -46,9 +48,9 @@ class OHLCVIngester:
         """
         self.db_url = db_url
         self.table_name = table_name
-        self.engine = create_engine(db_url)
+        self.engine = DatabasePool(db_url).get_engine()  # Use shared pool
         
-        logger.info(f"OHLCV Ingester initialized for table: {table_name}")
+        logger.info(f"OHLCV Ingester initialized for table: {table_name} (using connection pool)")
     
     def _validate_dataframe(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, list]:
         """

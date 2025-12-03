@@ -23,6 +23,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
+from src.database import DatabasePool
 import redis
 
 logger = logging.getLogger(__name__)
@@ -63,7 +64,8 @@ class FeatureStore:
         self.base_path.mkdir(parents=True, exist_ok=True)
         
         self.db_url = db_url
-        self.engine = create_engine(db_url)
+        # self.engine = create_engine(db_url)
+        self.engine = DatabasePool(db_url).get_engine()  # Use shared pool
         
         self.redis_client = redis.from_url(redis_url, decode_responses=True)
         
@@ -172,13 +174,15 @@ class FeatureStore:
             features['macd_slope'] = data['macd_hist'].diff(3)
         
         # Momentum indicator
-        features['momentum_5d'] = data['close'] - data['close'].shift(5)
-        features['momentum_20d'] = data['close'] - data['close'].shift(20)
+        # Use percentage returns (comparable across assets)
+        features['momentum_5d'] = data['close'].pct_change(5)
+        features['momentum_20d'] = data['close'].pct_change(20)
         
         # === Volatility Features ===
-        # Rolling volatility
-        features['volatility_20d'] = data['close'].pct_change().rolling(20).std()
-        features['volatility_60d'] = data['close'].pct_change().rolling(60).std()
+        # Rolling volatility (annualized - industry standard)
+        daily_returns = data['close'].pct_change()
+        features['volatility_20d'] = daily_returns.rolling(20).std() * np.sqrt(252)
+        features['volatility_60d'] = daily_returns.rolling(60).std() * np.sqrt(252)
         
         # ATR-based (if available)
         if 'atr_14' in data.columns:
@@ -195,13 +199,31 @@ class FeatureStore:
         features['hl_ratio'] = (data['high'] - data['low']) / data['close']
         
         # === Volume Features ===
-        # Volume ratios
-        features['volume_ratio_20d'] = data['volume'] / data['volume'].rolling(20).mean()
-        features['volume_ratio_60d'] = data['volume'] / data['volume'].rolling(60).mean()
+        # Volume ratios (protected against division by zero)
+        vol_ma_20 = data['volume'].rolling(20).mean()
+        vol_ma_60 = data['volume'].rolling(60).mean()
         
-        # OBV (On-Balance Volume)
+        features['volume_ratio_20d'] = np.where(
+            vol_ma_20 > 0,
+            data['volume'] / vol_ma_20,
+            1.0  # Neutral if no average volume
+        )
+        
+        features['volume_ratio_60d'] = np.where(
+            vol_ma_60 > 0,
+            data['volume'] / vol_ma_60,
+            1.0
+        )
+        
+        # OBV (On-Balance Volume) - normalized for cross-asset comparison
         obv = (np.sign(data['close'].diff()) * data['volume']).cumsum()
-        features['obv_slope'] = obv.diff(10)
+        obv_ma = obv.rolling(20).mean()
+        
+        features['obv_slope'] = np.where(
+            obv_ma != 0,
+            obv.diff(10) / obv_ma,  # Normalized slope
+            0
+        )
         
         # === Trend Features ===
         # SMA ratios (if available)

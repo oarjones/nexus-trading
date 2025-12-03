@@ -16,6 +16,8 @@ import pandas as pd
 import pandas_ta as ta
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
+from src.database import DatabasePool
+from src.database import DatabasePool
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +65,8 @@ class IndicatorEngine:
         """
         self.db_url = db_url
         self.table_name = table_name
-        self.engine = create_engine(db_url)
+        # self.engine = create_engine(db_url)
+        self.engine = DatabasePool(db_url).get_engine()  # Use shared pool
         
         logger.info(f"Indicator Engine initialized for table: {table_name}")
     
