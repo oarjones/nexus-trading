@@ -17,7 +17,12 @@ from .base import BaseAgent
 from .messaging import MessageBus
 from .schemas import RiskRequest, RiskResponse, Alert
 from .mcp_client import MCPClient, MCPServers
-from ..core.risk_limits import RiskLimits
+
+# Use try/except to handle both test and runtime imports
+try:
+    from core.risk_limits import RiskLimits
+except ImportError:
+    from ..core.risk_limits import RiskLimits
 
 logger = logging.getLogger(__name__)
 

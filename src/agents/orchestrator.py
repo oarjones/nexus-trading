@@ -15,16 +15,30 @@ from uuid import uuid4
 from .base import BaseAgent
 from .messaging import MessageBus
 from .schemas import TradingSignal, RiskRequest, RiskResponse, Decision
-from ..core.constants import (
-    DECISION_THRESHOLD,
-   REDUCED_THRESHOLD,
-    PENDING_VALIDATION_TIMEOUT_SECONDS,
-    WEIGHT_TECHNICAL_ANALYST,
-    WEIGHT_FUNDAMENTAL_ANALYST,
-    WEIGHT_SENTIMENT_ANALYST,
-    REDIS_KEY_AUDIT_DECISIONS,
-    REDIS_AUDIT_LOG_MAX_SIZE
-)
+
+# Use try/except to handle both test and runtime imports
+try:
+    from core.constants import (
+        DECISION_THRESHOLD,
+        REDUCED_THRESHOLD,
+        PENDING_VALIDATION_TIMEOUT_SECONDS,
+        WEIGHT_TECHNICAL_ANALYST,
+        WEIGHT_FUNDAMENTAL_ANALYST,
+        WEIGHT_SENTIMENT_ANALYST,
+        REDIS_KEY_AUDIT_DECISIONS,
+        REDIS_AUDIT_LOG_MAX_SIZE
+    )
+except ImportError:
+    from ..core.constants import (
+        DECISION_THRESHOLD,
+        REDUCED_THRESHOLD,
+        PENDING_VALIDATION_TIMEOUT_SECONDS,
+        WEIGHT_TECHNICAL_ANALYST,
+        WEIGHT_FUNDAMENTAL_ANALYST,
+        WEIGHT_SENTIMENT_ANALYST,
+        REDIS_KEY_AUDIT_DECISIONS,
+        REDIS_AUDIT_LOG_MAX_SIZE
+    )
 import redis
 
 logger = logging.getLogger(__name__)

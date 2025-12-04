@@ -6,7 +6,7 @@ via Redis pub/sub channels.
 """
 
 from pydantic import BaseModel, Field, field_validator
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
 from uuid import uuid4
@@ -51,7 +51,7 @@ class TradingSignal(BaseModel):
         ttl_seconds: Time-to-live for signal validity
     """
     message_id: str = Field(default_factory=lambda: str(uuid4()))
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     correlation_id: Optional[str] = Field(default_factory=lambda: str(uuid4()))  # For request tracing
     from_agent: str
     symbol: str
@@ -95,7 +95,7 @@ class RiskRequest(BaseModel):
     """
     message_id: str = Field(default_factory=lambda: str(uuid4()))
     request_id: str = Field(default_factory=lambda: str(uuid4()))
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     correlation_id: Optional[str] = None  # Inherited from signal for tracing
     signal: TradingSignal
     capital: float = Field(gt=0)

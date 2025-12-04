@@ -22,8 +22,8 @@ from agents.messaging import MessageBus
 class ConcreteTestAgent(BaseAgent):
     """Concrete implementation for testing BaseAgent."""
     
-    def __init__(self, name, config, message_bus):
-        super().__init__(name, config, message_bus)
+    def __init__(self, name, config, message_bus, redis_client=None):
+        super().__init__(name, config, message_bus, redis_client)
         self.setup_called = False
         self.process_called = False
         self.process_count = 0
@@ -56,10 +56,20 @@ def mock_message_bus():
 
 
 @pytest.fixture
-def test_agent(mock_message_bus):
+def mock_redis():
+    """Create a mock Redis client for testing."""
+    redis_mock = Mock()
+    redis_mock.setex = Mock()
+    redis_mock.delete = Mock()
+    redis_mock.get = Mock(return_value=None)
+    return redis_mock
+
+
+@pytest.fixture
+def test_agent(mock_message_bus, mock_redis):
     """Create a test agent instance."""
     config = {"test_param": "test_value"}
-    agent = ConcreteTestAgent("test_agent", config, mock_message_bus)
+    agent = ConcreteTestAgent("test_agent", config, mock_message_bus, mock_redis)
     return agent
 
 
@@ -259,7 +269,7 @@ class TestBaseAgentAbstractMethods:
         
         # Should raise TypeError due to abstract method
         with pytest.raises(TypeError):
-            IncompleteAgent("test", {}, mock_message_bus)
+            IncompleteAgent("test", {}, mock_message_bus, None)
     
     def test_cannot_instantiate_without_process(self, mock_message_bus):
         """Test that BaseAgent cannot be instantiated without process()."""
@@ -269,7 +279,7 @@ class TestBaseAgentAbstractMethods:
         
         # Should raise TypeError due to abstract method
         with pytest.raises(TypeError):
-            IncompleteAgent("test", {}, mock_message_bus)
+            IncompleteAgent("test", {}, mock_message_bus, None)
 
 
 class TestBaseAgentRepr:
