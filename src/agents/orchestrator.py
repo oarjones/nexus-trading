@@ -320,9 +320,11 @@ class OrchestratorAgent(BaseAgent):
         
         for key in expired_keys:
             pending = self._pending_validations.pop(key)
+            # Recalculate age for this specific pending validation
+            pending_age = (now - pending["timestamp"]).total_seconds()
             self.logger.warning(
                 f"Expired pending validation: {pending['signal'].symbol} "
-                f"(age: {age:.0f}s)"
+                f"(age: {pending_age:.0f}s)"
             )
     
     async def _load_state(self):

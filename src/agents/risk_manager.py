@@ -334,30 +334,122 @@ class RiskManagerAgent(BaseAgent):
     
     async def _get_current_drawdown(self) -> float:
         """
-        Get current portfolio drawdown.
+        Calculate current portfolio drawdown from peak.
+        
+        Queries portfolio value history from Redis and calculates
+        the drawdown from the highest value (peak).
         
         Returns:
             Drawdown as decimal (e.g., 0.10 = 10%)
         """
-        # Placeholder - would need to query portfolio state
-        # For now, return 0
-        # TODO: Implement actual drawdown calculation from portfolio history
-        return 0.0
+        try:
+            # Get portfolio value history from Redis
+            # History is stored as a list with most recent values first
+            history_key = "portfolio:value_history"
+            history = self.redis.lrange(history_key, 0, 99)  # Last 100 values
+            
+            if not history or len(history) < 2:
+                self.logger.debug("Insufficient history for drawdown calculation")
+                return 0.0
+            
+            # Parse values (stored as strings in Redis)
+            values = [float(v) for v in history]
+            
+            # Calculate peak (highest value in history)
+            peak = max(values)
+            current = values[0]  # Most recent value (LRANGE returns newest first)
+            
+            # Calculate drawdown
+            if peak == 0:
+                return 0.0
+            
+            drawdown = (peak - current) / peak
+            
+            # Ensure non-negative
+            return max(0.0, drawdown)
+        
+        except Exception as e:
+            self.logger.error(f"Error calculating drawdown: {e}", exc_info=True)
+            # Fail safe: return 0 to avoid false kill switch activation
+            return 0.0
     
     async def _get_portfolio_correlation(self, symbol: str) -> float:
         """
-        Get correlation of symbol with current portfolio.
+        Calculate correlation of symbol with current portfolio.
+        
+        Uses 60-day rolling correlation with existing positions.
+        Returns the maximum absolute correlation with any position.
         
         Args:
             symbol: Symbol to check correlation for
             
         Returns:
-            Correlation coefficient (0-1)
+            Max correlation coefficient (0-1) with any position
         """
-        # Placeholder - would need correlation matrix calculation
-        # For now, return low correlation
-        # TODO: Implement actual correlation calculation
-        return 0.3
+        try:
+            # Get current positions from Redis
+            positions_data = self.redis.hgetall("positions")
+            
+            if not positions_data:
+                self.logger.debug(f"No positions for correlation check with {symbol}")
+                return 0.0  # No portfolio, no correlation
+            
+            # Parse positions
+            positions = [json.loads(p) for p in positions_data.values()]
+            
+            if not positions:
+                return 0.0
+            
+            correlations = []
+            
+            for position in positions:
+                pos_symbol = position.get("symbol")
+                
+                if pos_symbol == symbol:
+                    continue  # Skip self-correlation
+                
+                try:
+                    # Query correlation from MCP technical server
+                    # Note: This assumes the MCP server has price data
+                    result = await self.mcp_client.call(
+                        self.mcp_servers.technical,
+                        "calculate_indicators",  # Using existing tool
+                        {
+                            "symbol": symbol,
+                            "indicators": ["correlation"],
+                            "timeframe": "1d",
+                            "compare_symbol": pos_symbol,
+                            "period": 60
+                        }
+                    )
+                    
+                    corr_value = result.get("indicators", {}).get("correlation", 0)
+                    correlations.append(abs(corr_value))
+                
+                except Exception as e:
+                    self.logger.warning(
+                        f"Could not get correlation {symbol}/{pos_symbol}: {e}"
+                    )
+                    # Assume moderate correlation if we can't calculate
+                    correlations.append(0.3)
+            
+            # Return max correlation (most correlated position)
+            max_corr = max(correlations) if correlations else 0.0
+            
+            self.logger.debug(
+                f"Portfolio correlation for {symbol}: {max_corr:.2f} "
+                f"(checked {len(correlations)} positions)"
+            )
+            
+            return max_corr
+        
+        except Exception as e:
+            self.logger.error(
+                f"Error calculating portfolio correlation for {symbol}: {e}",
+                exc_info=True
+            )
+            # Fail conservative: assume moderate correlation
+            return 0.5
     
     def _get_sector(self, symbol: str) -> str:
         """
