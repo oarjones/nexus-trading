@@ -18,6 +18,22 @@
 - **Framework:** Use `pytest`.
 - **Coverage:** Aim for high coverage on core modules.
 - **Mocking:** Use mocks for external services (IBKR, APIs, DB) to ensure tests are fast and deterministic.
+- **Test Directory Naming (CRITICAL):**
+  - Test directories MUST be prefixed with `test_` (e.g., `test_agents`, `test_data`).
+  - NEVER name test directories the same as source directories (e.g., avoid `tests/agents` when `src/agents` exists).
+  - **Reason:** Python imports search sys.path in order. Identical directory names cause import conflicts when both `src/` and `tests/` are in sys.path.
+  - **Example Structure:**
+    ```
+    src/
+    ├── agents/       ← Source code
+    ├── data/
+    └── trading/
+    
+    tests/
+    ├── test_agents/  ← Tests (prefixed!)
+    ├── test_data/
+    └── test_trading/
+    ```
 
 ## 4. Documentation
 - **Docstrings:** Required for all public modules, classes, and functions. Use Google style or NumPy style.
