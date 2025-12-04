@@ -9,7 +9,7 @@ import asyncio
 import json
 import logging
 from typing import Dict, Any, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 from .base import BaseAgent
@@ -147,7 +147,7 @@ class OrchestratorAgent(BaseAgent):
             "signal": signal,
             "score": score,
             "sizing_factor": sizing_factor,
-            "timestamp": datetime.utcnow()
+            "timestamp": datetime.now(timezone.utc)
         }
         
         # Request validation from Risk Manager
@@ -292,7 +292,7 @@ class OrchestratorAgent(BaseAgent):
             reason: Reason for action
         """
         log_entry = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "symbol": signal.symbol,
             "direction": signal.direction.value,
             "from_agent": signal.from_agent,
@@ -310,7 +310,7 @@ class OrchestratorAgent(BaseAgent):
     
     async def _cleanup_expired(self):
         """Clean up expired pending validations."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         expired_keys = []
         
         for request_id, pending in self._pending_validations.items():

@@ -8,7 +8,7 @@ from the MCP technical server.
 import asyncio
 import logging
 from typing import Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, time zone
 from uuid import uuid4
 
 from .base import BaseAgent
@@ -150,7 +150,7 @@ class TechnicalAnalystAgent(BaseAgent):
         # Create signal
         signal = TradingSignal(
             message_id=str(uuid4()),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             from_agent=self.name,
             symbol=symbol,
             direction=direction,
