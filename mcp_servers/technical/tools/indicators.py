@@ -132,7 +132,7 @@ async def calculate_indicators_tool(args: Dict[str, Any], engine) -> Dict[str, A
             'timeframe': timeframe,
             'period': period,
             'indicators': latest_indicators,
-            'timestamp': datetime.now().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         }
     
     except Exception as e:

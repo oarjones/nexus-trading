@@ -50,8 +50,13 @@ class BaseAgent(ABC):
         self.running = False
         self._last_activity: Optional[datetime] = None
         self._error_count = 0
+
         self._max_consecutive_errors = config.get("max_consecutive_errors", 5)
         self._heartbeat_ttl = config.get("heartbeat_ttl_seconds", 60)
+        
+        # Backoff configuration (configurable for testing)
+        self._backoff_base = config.get("backoff_base", 2)  # Base for exponential backoff
+        self._backoff_max = config.get("backoff_max", 60)   # Max backoff in seconds
         
         # Setup logging
         self.logger = logging.getLogger(f"agents.{name}")
@@ -191,8 +196,8 @@ class BaseAgent(ABC):
                     self.running = False
                     break
                 
-                # Backoff before retry (exponential with max 60s)
-                backoff_seconds = min(2 ** self._error_count, 60)
+                # Backoff before retry (exponential with configurable max)
+                backoff_seconds = min(self._backoff_base ** self._error_count, self._backoff_max)
                 self.logger.info(f"Backing off for {backoff_seconds}s before retry")
                 await asyncio.sleep(backoff_seconds)
             

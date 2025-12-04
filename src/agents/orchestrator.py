@@ -16,9 +16,9 @@ from .base import BaseAgent
 from .messaging import MessageBus
 from .schemas import TradingSignal, RiskRequest, RiskResponse, Decision
 
-# Use try/except to handle both test and runtime imports
+# Import constants - try relative first, then absolute
 try:
-    from core.constants import (
+    from ..core.constants import (
         DECISION_THRESHOLD,
         REDUCED_THRESHOLD,
         PENDING_VALIDATION_TIMEOUT_SECONDS,
@@ -29,7 +29,7 @@ try:
         REDIS_AUDIT_LOG_MAX_SIZE
     )
 except ImportError:
-    from ..core.constants import (
+    from core.constants import (
         DECISION_THRESHOLD,
         REDUCED_THRESHOLD,
         PENDING_VALIDATION_TIMEOUT_SECONDS,
