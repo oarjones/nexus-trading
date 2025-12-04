@@ -36,6 +36,21 @@
 - **Caching/Messaging:** Redis
 - **Architecture:** MCP (Model Context Protocol) for agents.
 
-## 7. Workflow
+## 7. Database Connection Management
+- **Connection Pooling:** ALWAYS use centralized connection pooling via `BaseMCPServer.db_engine`.
+- **Implementation:**
+  - MCP Servers: Pass `db_url` to `BaseMCPServer.__init__()` to initialize pooled engine.
+  - Tools: Accept `engine` parameter (SQLAlchemy Engine instance), NOT `db_url` string.
+  - Never create engines with `create_engine()` inside tools or methods.
+  - Never call `engine.dispose()` in tools (managed by BaseMCPServer).
+- **Pool Configuration:**
+  ```python
+  pool_size=5          # Base connections
+  max_overflow=10      # Additional connections under load
+  pool_pre_ping=True   # Verify before use
+  pool_recycle=3600    # Recycle after 1 hour
+  ```
+
+## 8. Workflow
 - **Phased Implementation:** Follow the roadmap phases strictly.
 - **Validation:** Verify each step before moving to the next.

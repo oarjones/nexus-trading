@@ -53,9 +53,8 @@ class MarketDataServer(BaseMCPServer):
             db_url: PostgreSQL connection string
             redis_url: Redis connection string
         """
-        super().__init__("market-data")
+        super().__init__("market-data", db_url=db_url)
         
-        self.db_url = db_url
         self.redis_url = redis_url
         
         # Register tools
@@ -139,11 +138,11 @@ class MarketDataServer(BaseMCPServer):
     
     async def _get_quote(self, args: dict) -> dict:
         """Wrapper for get_quote_tool."""
-        return await get_quote_tool(args, self.db_url, self.redis_url)
+        return await get_quote_tool(args, self.get_db_engine(), self.redis_url)
     
     async def _get_ohlcv(self, args: dict) -> dict:
         """Wrapper for get_ohlcv_tool."""
-        return await get_ohlcv_tool(args, self.db_url)
+        return await get_ohlcv_tool(args, self.get_db_engine())
     
     async def _get_symbols(self, args: dict) -> dict:
         """Wrapper for get_symbols_tool."""

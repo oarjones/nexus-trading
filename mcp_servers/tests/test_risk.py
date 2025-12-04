@@ -139,3 +139,45 @@ async def test_get_exposure_tool_concentration(sample_positions):
     assert 'effective_positions' in metrics
     assert 0 < metrics['hhi'] <= 1
     assert metrics['effective_positions'] > 0
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_calculate_size_rejects_negative_avg_loss():
+    """Test that calculate_size rejects negative avg_loss."""
+    with pytest.raises(ValueError, match="avg_loss.*negative"):
+        await calculate_size_tool({
+            'portfolio_value': 100000,
+            'win_rate': 0.6,
+            'avg_win': 0.02,
+            'avg_loss': -0.01  # Invalid: negative
+        })
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_calculate_size_rejects_negative_avg_win():
+    """Test that calculate_size rejects negative avg_win."""
+    with pytest.raises(ValueError, match="avg_win.*negative"):
+        await calculate_size_tool({
+            'portfolio_value': 100000,
+            'win_rate': 0.6,
+            'avg_win': -0.02,  # Invalid: negative
+            'avg_loss': 0.01
+        })
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_calculate_size_handles_zero_avg_loss():
+    """Test that calculate_size handles zero avg_loss gracefully."""
+    result = await calculate_size_tool({
+        'portfolio_value': 100000,
+        'win_rate': 0.6,
+        'avg_win': 0.02,
+        'avg_loss': 0  # Edge case: zero loss
+    })
+    
+    # Should use fixed_risk method when avg_loss is 0
+    assert result['method'] == 'fixed_risk'
+    assert result['suggested_size'] > 0  # Should still suggest a size

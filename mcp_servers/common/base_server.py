@@ -42,13 +42,14 @@ class BaseMCPServer:
         ...         return {"data": "example"}
     """
     
-    def __init__(self, name: str, config_path: Optional[str] = None):
+    def __init__(self, name: str, config_path: Optional[str] = None, db_url: Optional[str] = None):
         """
         Initialize MCP server.
         
         Args:
             name: Server name
             config_path: Optional path to YAML configuration file
+            db_url: Optional database URL for connection pooling
             
         Raises:
             ConfigError: If config file is invalid
@@ -57,6 +58,22 @@ class BaseMCPServer:
         self.config = load_config(config_path) if config_path else {}
         self.server = Server(name)
         self.tools: Dict[str, Callable] = {}
+        self.db_engine = None
+        
+        # Initialize database engine with pooling if URL provided
+        if db_url:
+            from sqlalchemy import create_engine
+            from sqlalchemy.pool import QueuePool
+            
+            self.db_engine = create_engine(
+                db_url,
+                poolclass=QueuePool,
+                pool_size=5,
+                max_overflow=10,
+                pool_pre_ping=True,  # Verify connections before using
+                pool_recycle=3600    # Recycle connections after 1 hour
+            )
+            logger.info(f"[{name}] Database engine initialized with connection pooling")
         
         # Register list_tools handler
         @self.server.list_tools()
@@ -170,6 +187,21 @@ class BaseMCPServer:
             List of tool names
         """
         return list(self.tools.keys())
+    
+    def get_db_engine(self):
+        """
+        Get the database engine for use by tools.
+        
+        Returns:
+            SQLAlchemy engine instance or None if not initialized
+        """
+        return self.db_engine
+    
+    def cleanup(self):
+        """Clean up resources (e.g., database connections)."""
+        if self.db_engine:
+            logger.info(f"[{self.name}] Disposing database engine")
+            self.db_engine.dispose()
     
     def __repr__(self) -> str:
         """String representation of server."""

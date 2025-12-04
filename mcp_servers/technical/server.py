@@ -52,9 +52,7 @@ class TechnicalServer(BaseMCPServer):
         Args:
             db_url: PostgreSQL connection string
         """
-        super().__init__("technical")
-        
-        self.db_url = db_url
+        super().__init__("technical", db_url=db_url)
         
         # Register tools
         self._register_tools()
@@ -143,15 +141,15 @@ class TechnicalServer(BaseMCPServer):
     
     async def _calculate_indicators(self, args: dict) -> dict:
         """Wrapper for calculate_indicators_tool."""
-        return await calculate_indicators_tool(args, self.db_url)
+        return await calculate_indicators_tool(args, self.get_db_engine())
     
     async def _get_regime(self, args: dict) -> dict:
         """Wrapper for get_regime_tool."""
-        return await get_regime_tool(args, self.db_url)
+        return await get_regime_tool(args, self.get_db_engine())
     
     async def _find_sr_levels(self, args: dict) -> dict:
         """Wrapper for find_sr_levels_tool."""
-        return await find_sr_levels_tool(args, self.db_url)
+        return await find_sr_levels_tool(args, self.get_db_engine())
 
 
 async def main():

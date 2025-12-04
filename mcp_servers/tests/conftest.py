@@ -96,7 +96,7 @@ def mock_database_pool(monkeypatch):
         def get_engine(self):
             return self.engine
     
-    # Mock the DatabasePool import
+    # Mock the DatabasePool import from src.database
     import sys
     if 'src.database' in sys.modules:
         monkeypatch.setattr('src.database.DatabasePool', MockPool)

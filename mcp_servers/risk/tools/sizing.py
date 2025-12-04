@@ -66,6 +66,13 @@ async def calculate_size_tool(args: Dict[str, Any], config: Dict[str, Any] = Non
     if not (0 <= win_rate <= 1):
         raise ValueError("Parameter 'win_rate' must be between 0 and 1")
     
+    # Validate avg_win and avg_loss
+    if avg_win < 0:
+        raise ValueError("Parameter 'avg_win' cannot be negative")
+    
+    if avg_loss < 0:
+        raise ValueError("Parameter 'avg_loss' cannot be negative")
+    
     # Get config defaults if provided
     if config and 'sizing' in config:
         kelly_fraction = config['sizing'].get('kelly_fraction', kelly_fraction)

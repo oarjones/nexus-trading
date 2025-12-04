@@ -14,7 +14,7 @@ import pandas as pd
 logger = logging.getLogger(__name__)
 
 
-async def get_ohlcv_tool(args: Dict[str, Any], db_url: str) -> Dict[str, Any]:
+async def get_ohlcv_tool(args: Dict[str, Any], engine) -> Dict[str, Any]:
     """
     Get historical OHLCV data for a symbol.
     
@@ -27,7 +27,7 @@ async def get_ohlcv_tool(args: Dict[str, Any], db_url: str) -> Dict[str, Any]:
             - start (str): Start date (YYYY-MM-DD)
             - end (str): End date (YYYY-MM-DD)
             - limit (int): Max number of records - default 1000
-        db_url: PostgreSQL connection string
+        engine: SQLAlchemy engine instance (from connection pool)
         
     Returns:
         Dictionary with:
@@ -97,8 +97,6 @@ async def get_ohlcv_tool(args: Dict[str, Any], db_url: str) -> Dict[str, Any]:
     
     # Execute query
     try:
-        engine = create_engine(db_url)
-        
         with engine.connect() as conn:
             df = pd.read_sql(
                 text(query_str),
@@ -142,6 +140,3 @@ async def get_ohlcv_tool(args: Dict[str, Any], db_url: str) -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Error retrieving OHLCV for {symbol}: {e}")
         raise
-    
-    finally:
-        engine.dispose()

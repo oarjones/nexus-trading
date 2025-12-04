@@ -21,7 +21,7 @@ from src.data.indicators import IndicatorEngine
 logger = logging.getLogger(__name__)
 
 
-async def calculate_indicators_tool(args: Dict[str, Any], db_url: str) -> Dict[str, Any]:
+async def calculate_indicators_tool(args: Dict[str, Any], engine) -> Dict[str, Any]:
     """
     Calculate technical indicators for a symbol.
     
@@ -32,7 +32,7 @@ async def calculate_indicators_tool(args: Dict[str, Any], db_url: str) -> Dict[s
             - symbol (str): Stock symbol
             - timeframe (str): Timeframe - default '1d'
             - period (int): Number of days to analyze - default 60
-        db_url: PostgreSQL connection string
+        engine: SQLAlchemy engine instance (from connection pool)
         
     Returns:
         Dictionary with:
@@ -75,8 +75,6 @@ async def calculate_indicators_tool(args: Dict[str, Any], db_url: str) -> Dict[s
         end_date = datetime.now()
         start_date = end_date - timedelta(days=lookback_days)
         
-        engine = create_engine(db_url)
-        
         query = text("""
             SELECT time, open, high, low, close, volume
             FROM market_data.ohlcv
@@ -106,6 +104,10 @@ async def calculate_indicators_tool(args: Dict[str, Any], db_url: str) -> Dict[s
         df.set_index('time', inplace=True)
         
         # Calculate indicators using IndicatorEngine
+        # Note: IndicatorEngine creates its own engine internally
+        # TODO: Refactor IndicatorEngine to accept engine parameter
+        from sqlalchemy import create_engine
+        db_url = str(engine.url)  # Get URL from pooled engine
         indicator_engine = IndicatorEngine(db_url)
         indicators_df = indicator_engine.calculate_all(df, symbol, timeframe)
         
@@ -135,6 +137,3 @@ async def calculate_indicators_tool(args: Dict[str, Any], db_url: str) -> Dict[s
     except Exception as e:
         logger.error(f"Error calculating indicators for {symbol}: {e}")
         raise
-    
-    finally:
-        engine.dispose()

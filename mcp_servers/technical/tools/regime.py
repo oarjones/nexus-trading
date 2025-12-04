@@ -23,7 +23,7 @@ sys.path.insert(0, str(project_root))
 logger = logging.getLogger(__name__)
 
 
-async def get_regime_tool(args: Dict[str, Any], db_url: str) -> Dict[str, Any]:
+async def get_regime_tool(args: Dict[str, Any], engine) -> Dict[str, Any]:
     """
     Detect current market regime for a symbol.
     
@@ -36,7 +36,7 @@ async def get_regime_tool(args: Dict[str, Any], db_url: str) -> Dict[str, Any]:
     Args:
         args: Tool arguments containing:
             - symbol (str): Stock symbol
-        db_url: PostgreSQL connection string
+        engine: SQLAlchemy engine instance (from connection pool)
         
     Returns:
         Dictionary with:
@@ -69,7 +69,6 @@ async def get_regime_tool(args: Dict[str, Any], db_url: str) -> Dict[str, Any]:
     
     try:
         # Load recent data and indicators
-        engine = create_engine(db_url)
         
         # Get latest OHLCV (need 200+ for SMA200)
         ohlcv_query = text("""
@@ -85,6 +84,16 @@ async def get_regime_tool(args: Dict[str, Any], db_url: str) -> Dict[str, Any]:
         
         if ohlcv_df.empty:
             raise ValueError(f"No OHLCV data found for {symbol}")
+        
+        # CRITICAL: Data comes in DESC order, reverse to chronological for rolling calculations
+        ohlcv_df = ohlcv_df.iloc[::-1].reset_index(drop=True)
+        
+        # Validate minimum data for SMA200
+        if len(ohlcv_df) < 200:
+            raise ValueError(
+                f"Insufficient data for {symbol}: need 200+ candles for SMA200, "
+                f"got {len(ohlcv_df)}"
+            )
         
         # Get latest indicators
         indicators_query = text("""
@@ -108,21 +117,22 @@ async def get_regime_tool(args: Dict[str, Any], db_url: str) -> Dict[str, Any]:
             indicators[row['indicator']] = float(row['value'])
         
         # Calculate metrics
-        current_price = float(ohlcv_df['close'].iloc[0])  # Most recent
+        # After reordering, last element (iloc[-1]) is the most recent
+        current_price = float(ohlcv_df['close'].iloc[-1])
         
         # SMA200 (calculate if not in indicators)
         if 'sma_200' in indicators:
             sma_200 = indicators['sma_200']
         else:
-            # Calculate from OHLCV
-            sma_200 = ohlcv_df['close'].rolling(200).mean().iloc[0]
+            # Calculate from OHLCV - data is now chronological, use iloc[-1] for most recent
+            sma_200 = ohlcv_df['close'].rolling(200).mean().iloc[-1]
         
         # ADX
         adx = indicators.get('adx_14', 0)
         
-        # Volatility (annualized)
+        # Volatility (annualized) - calculate on chronological data
         returns = ohlcv_df['close'].pct_change()
-        volatility = returns.rolling(20).std().iloc[0] * np.sqrt(252)
+        volatility = returns.rolling(20).std().iloc[-1] * np.sqrt(252)
         
         # Regime detection logic
         price_vs_sma200 = current_price / sma_200 if sma_200 > 0 else 1.0
@@ -179,6 +189,3 @@ async def get_regime_tool(args: Dict[str, Any], db_url: str) -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Error detecting regime for {symbol}: {e}")
         raise
-    
-    finally:
-        engine.dispose()

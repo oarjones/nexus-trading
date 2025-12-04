@@ -14,7 +14,7 @@ from sqlalchemy import create_engine, text
 logger = logging.getLogger(__name__)
 
 
-async def get_quote_tool(args: Dict[str, Any], db_url: str, redis_url: str) -> Dict[str, Any]:
+async def get_quote_tool(args: Dict[str, Any], engine, redis_url: str) -> Dict[str, Any]:
     """
     Get current quote for a symbol.
     
@@ -24,7 +24,7 @@ async def get_quote_tool(args: Dict[str, Any], db_url: str, redis_url: str) -> D
     Args:
         args: Tool arguments containing:
             - symbol (str): Stock symbol (e.g., 'AAPL', 'SAN.MC')
-        db_url: PostgreSQL connection string
+        engine: SQLAlchemy engine instance (from connection pool)
         redis_url: Redis connection string
         
     Returns:
@@ -74,7 +74,6 @@ async def get_quote_tool(args: Dict[str, Any], db_url: str, redis_url: str) -> D
     
     # Fallback to latest OHLCV from database
     try:
-        engine = create_engine(db_url)
         
         query = text("""
             SELECT time, close, volume
@@ -103,6 +102,3 @@ async def get_quote_tool(args: Dict[str, Any], db_url: str, redis_url: str) -> D
     except Exception as e:
         logger.error(f"Database error getting quote for {symbol}: {e}")
         raise
-    
-    finally:
-        engine.dispose()

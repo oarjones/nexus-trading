@@ -21,7 +21,7 @@ sys.path.insert(0, str(project_root))
 logger = logging.getLogger(__name__)
 
 
-async def find_sr_levels_tool(args: Dict[str, Any], db_url: str) -> Dict[str, Any]:
+async def find_sr_levels_tool(args: Dict[str, Any], engine) -> Dict[str, Any]:
     """
     Find support and resistance levels for a symbol.
     
@@ -33,7 +33,7 @@ async def find_sr_levels_tool(args: Dict[str, Any], db_url: str) -> Dict[str, An
             - symbol (str): Stock symbol
             - period (int): Lookback period in days - default 60
             - max_levels (int): Maximum levels to return - default 5
-        db_url: PostgreSQL connection string
+        engine: SQLAlchemy engine instance (from connection pool)
         
     Returns:
         Dictionary with:
@@ -73,7 +73,6 @@ async def find_sr_levels_tool(args: Dict[str, Any], db_url: str) -> Dict[str, An
     
     try:
         # Load OHLCV data
-        engine = create_engine(db_url)
         end_date = datetime.now()
         start_date = end_date - timedelta(days=period)
         
@@ -176,6 +175,3 @@ async def find_sr_levels_tool(args: Dict[str, Any], db_url: str) -> Dict[str, An
     except Exception as e:
         logger.error(f"Error finding S/R levels for {symbol}: {e}")
         raise
-    
-    finally:
-        engine.dispose()
