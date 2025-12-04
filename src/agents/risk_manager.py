@@ -45,6 +45,38 @@ class RiskManagerAgent(BaseAgent):
     MAX_SECTOR_PCT = 0.40
     MAX_CORRELATION = 0.70
     MAX_DRAWDOWN = 0.15
+    MIN_CASH_PCT = 0.10
+        
+            
+    def __init__(
+        self,
+        config: Dict[str, Any],
+        message_bus: MessageBus,
+        mcp_servers: MCPServers,
+        redis_client: redis.Redis
+    ):
+        """
+        Initialize Risk Manager Agent.
+        
+        Args:
+            config: Configuration dict with:
+                - base_risk_per_trade: Base risk per trade (e.g., 0.01 = 1%)
+                - kelly_fraction: Kelly criterion fraction (e.g., 0.25 = 25%)
+                - drawdown_check_seconds: How often to check drawdown
+            message_bus: Shared MessageBus instance
+            mcp_servers: MCP server URLs
+            redis_client: Redis client for state queries
+        """
+        super().__init__("risk_manager", config, message_bus)
+        
+        self.mcp_servers = mcp_servers
+        self.mcp_client = MCPClient()
+        self.redis = redis_client  # ← LÍNEA IMPORTANTE AGREGADA
+        
+        # Configuration
+        self.base_risk_per_trade = config.get("base_risk_per_trade", 0.01)
+        self.kelly_fraction = config.get("kelly_fraction", 0.25)
+        self.drawdown_check_seconds = config.get("drawdown_check_seconds", 10)
         
         # State
         self._kill_switch_activated = False
@@ -60,6 +92,7 @@ class RiskManagerAgent(BaseAgent):
             f"max_sector={self.MAX_SECTOR_PCT:.0%}, "
             f"max_drawdown={self.MAX_DRAWDOWN:.0%}"
         )
+
     
     async def setup(self):
         """Initialize agent - subscribe to risk requests."""
