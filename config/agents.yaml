@@ -1,0 +1,111 @@
+# Agent Configuration
+# 
+# Configuration for all autonomous trading agents.
+# Environment variables can be used with ${VAR_NAME} syntax.
+
+# ==============================================================================
+# Orchestrator Agent
+# ==============================================================================
+orchestrator:
+  # Decision thresholds
+  decision_threshold: 0.65      # Score needed for full execution
+  reduced_threshold: 0.50       # Score needed for reduced execution
+  escalation_threshold: 0.60    # Score for escalation/review
+  
+  # Weights for each analyst (must sum to 1.0)
+  weights:
+    technical: 0.40             # Technical Analyst weight
+    fundamental: 0.30           # Fundamental Analyst (future)
+    sentiment: 0.30             # Sentiment Analyst (future)
+  
+  # State management
+  state_ttl_seconds: 300        # How long to keep pending validations
+
+# ==============================================================================
+# Technical Analyst Agent
+# ==============================================================================
+technical_analyst:
+  # Symbols to analyze
+  symbols:
+    - SAN.MC     # Banco Santander
+    - ITX.MC     # Inditex
+    - IBE.MC     # Iberdrola
+    - BBVA.MC    # BBVA
+    - TEF.MC     # Telefónica
+  
+  # Analysis interval
+  interval_seconds: 300         # Analyze every 5 minutes
+  
+  # Signal generation
+  confidence_threshold: 0.50    # Minimum confidence to publish signal
+  
+  # Indicators to use
+  indicators:
+    - RSI
+    - MACD
+    - SMA_50
+    - SMA_200
+    - ADX
+    - ATR
+  
+  # Timeframes to analyze
+  timeframes:
+    - 1d                        # Daily timeframe
+  
+  # S/R levels configuration
+  sr_lookback_days: 50          # Days to look back for S/R levels
+  sr_max_levels: 5              # Max levels to consider
+
+# ==============================================================================
+# Risk Manager Agent
+# ==============================================================================
+risk_manager:
+  # Position sizing base parameters
+  base_risk_per_trade: 0.01     # 1% risk per trade
+  kelly_fraction: 0.25          # Conservative Kelly (25%)
+  
+  # Monitoring intervals
+  drawdown_check_seconds: 10    # Check drawdown every 10 seconds
+  
+  # Hardcoded limits (for reference, actual values in code)
+  # These values are READ-ONLY and must match code constants
+  limits_reference:
+    max_position_pct: 0.20      # 20% max per position
+    max_sector_pct: 0.40        # 40% max per sector
+    max_correlation: 0.70       # 70% max correlation
+    max_drawdown: 0.15          # 15% max drawdown (kill switch)
+    min_cash_pct: 0.10          # 10% min cash reserve
+
+# ==============================================================================
+# Message Bus / Redis
+# ==============================================================================
+messaging:
+  redis_url: ${REDIS_URL}       # Redis URL from environment
+  
+  # Channel names
+  channels:
+    signals: "signals"
+    risk_requests: "risk:requests"
+    risk_responses: "risk:responses"
+    decisions: "decisions"
+    alerts: "alerts"
+    status: "status"
+
+# ==============================================================================
+# Logging
+# ==============================================================================
+logging:
+  level: INFO                   # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  
+  # Structured logging for decisions
+  audit_log_channel: "audit:decisions"
+  audit_log_max_entries: 1000   # Keep last N decisions
+
+# ==============================================================================
+# Health Checks
+# ==============================================================================
+health:
+  check_interval_seconds: 60    # Health check every minute
+  unhealthy_threshold: 3        # Consecutive failures before unhealthy
+  startup_grace_period: 30      # Seconds to wait after startup
