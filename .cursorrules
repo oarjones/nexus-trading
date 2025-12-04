@@ -57,3 +57,42 @@
 ## 8. Workflow
 - **Phased Implementation:** Follow the roadmap phases strictly.
 - **Validation:** Verify each step before moving to the next.
+
+## 9. Python Best Practices (Lessons Learned from Phase 3)
+
+### Datetime (CRITICAL)
+- **NEVER use `datetime.utcnow()`** - Deprecated in Python 3.12+
+- **ALWAYS use `datetime.now(timezone.utc)`** for UTC timestamps
+- All datetime objects MUST be timezone-aware
+- Import: `from datetime import datetime, timezone`
+
+### Implementation Completeness (CRITICAL)
+- **NEVER leave placeholder/stub implementations in production code**
+- **NO functions that return hardcoded values** (e.g., `return 0.0` always)
+- **NO TODO comments for critical functionality**
+- If stubbing temporarily:
+  - Document clearly what's stubbed and WHY
+  - Create explicit ticket/issue for completion
+  - Mark with `# TEMPORARY STUB - Issue #XXX` not just `# TODO`
+  
+### Error Handling and Scope
+- NEVER reuse loop variables outside their scope
+- Recalculate time-dependent values fresh when needed
+- Fail-safe defaults: Conservative values on errors (e.g., correlation=0.5, not 0.0)
+- Example: Calculate `pending_age` fresh for each item when logging
+
+### Redis and Dependencies
+- Classes using `self.redis` MUST receive `redis_client: redis.Redis` in [__init__](cci:1://file:///C:/projects/nexus-trading/src/agents/risk_manager.py:50:4-93:9)
+- Redis returns bytes - always decode or use `json.loads()`
+- Import ALL modules used (json, redis, etc.)
+- Complete type hints: `redis.Redis`, not just [redis](cci:1://file:///C:/projects/nexus-trading/tests/test_agents/test_messaging.py:28:0-31:37)
+
+### Constants and Configuration
+- NO duplicate hardcoded values across files
+- Use centralized modules (e.g., [src/core/risk_limits.py](cci:7://file:///C:/projects/nexus-trading/src/core/risk_limits.py:0:0-0:0))
+- Import from single source of truth
+
+### Async Best Practices
+- Handle `asyncio.CancelledError` separately
+- Exponential backoff: `min(2 ** retry_count, max_seconds)`
+- Yield to event loop: `await asyncio.sleep(small_value)`

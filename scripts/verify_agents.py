@@ -100,27 +100,47 @@ class VerificationSuite:
     
     async def check_agent_health(self, agent_name: str) -> bool:
         """
-        Check if an agent is healthy via Redis state.
+        Check if an agent is healthy via Redis heartbeat.
         
-        Note: This assumes agents publish their status periodically.
-        For now, we'll check if the agent has logged any activity.
+        Agents publish heartbeats to Redis with TTL. If the key exists,
+        the agent is considered healthy.
         """
         try:
             client = redis.from_url(self.redis_url, decode_responses=True)
             
-            # Check if agent has any recent activity in audit log
-            # This is a simplified check - in production, agents would
-            # publish heartbeats to a dedicated channel
+            # Check heartbeat key with lowercase agent name (as used in BaseAgent)
+            # Convert display name to agent name format
+            agent_key_map = {
+                "Risk Manager": "risk_manager",
+                "Technical Analyst": "technical_analyst",
+                "Orchestrator": "orchestrator"
+            }
             
-            # For now, just assume healthy if Redis is accessible
-            # TODO: Implement proper agent heartbeat mechanism
-            self.log_result(
-                f"{agent_name} health",
-                True,
-                "Assumed healthy (heartbeat TBD)"
-            )
-            client.close()
-            return True
+            agent_key_name = agent_key_map.get(agent_name, agent_name.lower().replace(" ", "_"))
+            heartbeat_key = f"agent:heartbeat:{agent_key_name}"
+            
+            # Check if heartbeat exists
+            heartbeat_data = client.get(heartbeat_key)
+            
+            if heartbeat_data:
+                # Get TTL to show how recently it was updated
+                ttl = client.ttl(heartbeat_key)
+                self.log_result(
+                    f"{agent_name} health",
+                    True,
+                    f"Heartbeat active (TTL: {ttl}s)"
+                )
+                client.close()
+                return True
+            else:
+                self.log_result(
+                    f"{agent_name} health",
+                    False,
+                    "No heartbeat found (agent not running or heartbeat expired)"
+                )
+                client.close()
+                return False
+                
         except Exception as e:
             self.log_result(f"{agent_name} health", False, str(e))
             return False

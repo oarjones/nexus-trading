@@ -8,7 +8,7 @@ from the MCP technical server.
 import asyncio
 import logging
 from typing import Dict, Any, Optional
-from datetime import datetime, time zone
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from .base import BaseAgent

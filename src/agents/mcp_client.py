@@ -1,12 +1,19 @@
 """
 MCP Client helper for communicating with MCP servers.
 
-Provides a simple HTTP client for calling MCP server tools.
+Provides a simple HTTP client for calling MCP server tools with automatic retry.
 """
 
 import httpx
 import logging
 from typing import Dict, Any, Optional
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception_type,
+    before_sleep_log
+)
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +22,8 @@ class MCPClient:
     """
     Client for calling MCP server tools via HTTP.
     
-    Provides a simple interface to call tools on running MCP servers.
+    Provides a simple interface to call tools on running MCP servers
+    with automatic retry on transient failures.
     
     Example:
         >>> client = MCPClient()
@@ -26,16 +34,25 @@ class MCPClient:
         ... )
     """
     
-    def __init__(self, timeout: float = 30.0):
+    def __init__(self, timeout: float = 30.0, max_retries: int = 3):
         """
         Initialize MCP client.
         
         Args:
             timeout: Request timeout in seconds
+            max_retries: Maximum number of retry attempts
         """
         self.timeout = timeout
+        self.max_retries = max_retries
         self.client = httpx.AsyncClient(timeout=timeout)
     
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=1, max=10),
+        retry=retry_if_exception_type((httpx.TimeoutException, httpx.ConnectError, httpx.NetworkError)),
+        before_sleep=before_sleep_log(logger, logging.WARNING),
+        reraise=True
+    )
     async def call(
         self,
         server_url: str,
@@ -43,7 +60,14 @@ class MCPClient:
         arguments: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
-        Call a tool on an MCP server.
+        Call a tool on an MCP server with automatic retry.
+        
+        Retries on:
+        - Connection errors
+        - Timeout errors  
+        - Network errors
+        
+        Uses exponential backoff: 1s, 2s, 4s (max 10s)
         
         Args:
             server_url: Base URL of MCP server (e.g., "http://localhost:3002")
@@ -54,7 +78,7 @@ class MCPClient:
             Tool response as dictionary
             
         Raises:
-            httpx.HTTPError: If request fails
+            httpx.HTTPError: If request fails after all retries
             
         Example:
             >>> result = await client.call(
@@ -65,24 +89,19 @@ class MCPClient:
         """
         url = f"{server_url}/tools/{tool_name}"
         
-        try:
-            logger.debug(f"Calling MCP tool: {url} with args: {arguments}")
-            
-            response = await self.client.post(
-                url,
-                json=arguments,
-                headers={"Content-Type": "application/json"}
-            )
-            
-            response.raise_for_status()
-            result = response.json()
-            
-            logger.debug(f"MCP tool {tool_name} returned: {result}")
-            return result
+        logger.debug(f"Calling MCP tool: {url} with args: {arguments}")
         
-        except httpx.HTTPError as e:
-            logger.error(f"MCP call failed: {tool_name} at {server_url}: {e}")
-            raise
+        response = await self.client.post(
+            url,
+            json=arguments,
+            headers={"Content-Type": "application/json"}
+        )
+        
+        response.raise_for_status()
+        result = response.json()
+        
+        logger.debug(f"MCP tool {tool_name} returned: {result}")
+        return result
     
     async def health_check(self, server_url: str) -> bool:
         """

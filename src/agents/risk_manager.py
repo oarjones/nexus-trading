@@ -17,6 +17,7 @@ from .base import BaseAgent
 from .messaging import MessageBus
 from .schemas import RiskRequest, RiskResponse, Alert
 from .mcp_client import MCPClient, MCPServers
+from ..core.risk_limits import RiskLimits
 
 logger = logging.getLogger(__name__)
 
@@ -27,25 +28,21 @@ class RiskManagerAgent(BaseAgent):
     
     Responsibilities:
     - Listen to risk:requests channel
-    - Validate against HARDCODED limits
+    - Validate against HARDCODED limits (imported from RiskLimits)
     - Calculate position sizing with adjustments
     - Publish responses on risk:responses channel
     - Monitor drawdown continuously (kill switch)
     
-    HARDCODED LIMITS (NOT configurable):
-    - MAX_POSITION_PCT = 0.20 (20% max per position)
-    - MAX_SECTOR_PCT = 0.40 (40% max per sector)
-    - MAX_CORRELATION = 0.70 (70% max correlation)
-    - MAX_DRAWDOWN = 0.15 (15% max drawdown - KILL SWITCH)
-    - MIN_CASH_PCT = 0.10 (10% min cash reserve)
+    All limits are imported from src.core.risk_limits.RiskLimits module
+    to ensure consistency across the system.
     """
     
-    # HARDCODED LIMITS - DO NOT MODIFY
-    MAX_POSITION_PCT = 0.20
-    MAX_SECTOR_PCT = 0.40
-    MAX_CORRELATION = 0.70
-    MAX_DRAWDOWN = 0.15
-    MIN_CASH_PCT = 0.10
+    # Import limits from central module
+    MAX_POSITION_PCT = RiskLimits.MAX_POSITION_PCT
+    MAX_SECTOR_PCT = RiskLimits.MAX_SECTOR_PCT
+    MAX_CORRELATION = RiskLimits.MAX_CORRELATION
+    MAX_DRAWDOWN = RiskLimits.MAX_DRAWDOWN
+    MIN_CASH_PCT = RiskLimits.MIN_CASH_PCT
         
             
     def __init__(
@@ -53,7 +50,8 @@ class RiskManagerAgent(BaseAgent):
         config: Dict[str, Any],
         message_bus: MessageBus,
         mcp_servers: MCPServers,
-        redis_client: redis.Redis
+        redis_client: redis.Redis,
+        db_pool = None  # Optional asyncpg connection pool
     ):
         """
         Initialize Risk Manager Agent.
@@ -66,12 +64,14 @@ class RiskManagerAgent(BaseAgent):
             message_bus: Shared MessageBus instance
             mcp_servers: MCP server URLs
             redis_client: Redis client for state queries
+            db_pool: asyncpg connection pool for database queries
         """
-        super().__init__("risk_manager", config, message_bus)
+        super().__init__("risk_manager", config, message_bus, redis_client)
         
         self.mcp_servers = mcp_servers
         self.mcp_client = MCPClient()
-        self.redis = redis_client  # ← LÍNEA IMPORTANTE AGREGADA
+        self.redis = redis_client
+        self.db_pool = db_pool
         
         # Configuration
         self.base_risk_per_trade = config.get("base_risk_per_trade", 0.01)
@@ -80,6 +80,7 @@ class RiskManagerAgent(BaseAgent):
         
         # State
         self._kill_switch_activated = False
+        self._sector_cache: Dict[str, str] = {}  # Cache for sector lookups
         
         self.logger.info(
             f"Risk Manager initialized: "
@@ -130,7 +131,8 @@ class RiskManagerAgent(BaseAgent):
                 adjusted_size=0,
                 adjustments=[],
                 warnings=[],
-                rejection_reason="KILL SWITCH ACTIVATED: Max drawdown exceeded"
+                rejection_reason="KILL SWITCH ACTIVATED: Max drawdown exceeded",
+                correlation_id=request.correlation_id  # Propagate for tracing
             )
             self.bus.publish("risk:responses", response)
             return
@@ -146,7 +148,8 @@ class RiskManagerAgent(BaseAgent):
                 adjusted_size=0,
                 adjustments=[],
                 warnings=[],
-                rejection_reason=rejection_reason
+                rejection_reason=rejection_reason,
+                correlation_id=request.correlation_id  # Propagate for tracing
             )
             self.logger.warning(f"Request rejected: {rejection_reason}")
         else:
@@ -159,7 +162,8 @@ class RiskManagerAgent(BaseAgent):
                 original_size=size_result["original"],
                 adjusted_size=size_result["adjusted"],
                 adjustments=size_result["adjustments"],
-                warnings=size_result["warnings"]
+                warnings=size_result["warnings"],
+                correlation_id=request.correlation_id  # Propagate for tracing
             )
             self.logger.info(
                 f"Request approved: original={size_result['original']}, "
@@ -206,7 +210,7 @@ class RiskManagerAgent(BaseAgent):
             return False, f"Drawdown exceeded ({current_dd:.1%} > {self.MAX_DRAWDOWN:.0%})"
         
         # 3. Check sector concentration
-        sector = self._get_sector(signal.symbol)
+        sector = await self._get_sector(signal.symbol)
         sector_exposure = exposure.get("exposure_by_sector", {}).get(sector, 0)
         sector_pct = sector_exposure / capital if capital > 0 else 0
         
@@ -294,7 +298,7 @@ class RiskManagerAgent(BaseAgent):
                 }
             )
             
-            sector = self._get_sector(signal.symbol)
+            sector = await self._get_sector(signal.symbol)
             sector_exposure = exposure.get("exposure_by_sector", {}).get(sector, 0)
             sector_pct = sector_exposure / capital if capital > 0 else 0
             
@@ -458,9 +462,12 @@ class RiskManagerAgent(BaseAgent):
             # Fail conservative: assume moderate correlation
             return 0.5
     
-    def _get_sector(self, symbol: str) -> str:
+    async def _get_sector(self, symbol: str) -> str:
         """
-        Get sector for a symbol.
+        Get sector for a symbol from PostgreSQL database.
+        
+        Queries symbols_metadata table. Uses in-memory cache for performance.
+        Falls back to 'Unknown' if symbol not found.
         
         Args:
             symbol: Symbol to get sector for
@@ -468,14 +475,40 @@ class RiskManagerAgent(BaseAgent):
         Returns:
             Sector name
         """
-        # Simplified mapping for Spanish stocks
-        # In production, this would come from a database
-        sector_map = {
-            "SAN.MC": "Banking",
-            "BBVA.MC": "Banking",
-            "ITX.MC": "Retail",
-            "IBE.MC": "Utilities",
-            "TEF.MC": "Telecommunications"
-        }
+        # Check cache first
+        if symbol in self._sector_cache:
+            return self._sector_cache[symbol]
         
-        return sector_map.get(symbol, "Unknown")
+        # Query from database
+        if self.db_pool:
+            try:
+                async with self.db_pool.acquire() as conn:
+                    result = await conn.fetchrow(
+                        "SELECT sector FROM symbols_metadata WHERE symbol = $1 AND is_active = TRUE",
+                        symbol
+                    )
+                    
+                    if result:
+                        sector = result['sector']
+                        # Cache the result
+                        self._sector_cache[symbol] = sector
+                        return sector
+                    else:
+                        self.logger.warning(f"Symbol {symbol} not found in metadata table")
+                        return "Unknown"
+                        
+            except Exception as e:
+                self.logger.error(f"Error querying sector for {symbol}: {e}")
+                return "Unknown"
+        else:
+            # Fallback if no database connection
+            self.logger.warning(f"No database pool available, using fallback for {symbol}")
+            # Simple fallback mapping
+            fallback_map = {
+                "SAN.MC": "Banking",
+                "BBVA.MC": "Banking",
+                "ITX.MC": "Retail",
+                "IBE.MC": "Utilities",
+                "TEF.MC": "Telecommunications"
+            }
+            return fallback_map.get(symbol, "Unknown")

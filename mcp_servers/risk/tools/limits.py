@@ -2,23 +2,30 @@
 Risk limits validation tool.
 
 Validates proposed trades against hard risk limits.
+All limits are imported from src.core.risk_limits module.
 """
 
 import logging
+import sys
+from pathlib import Path
 from typing import Dict, Any, List
+
+# Add src directory to path to import core modules
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+from src.core.risk_limits import RiskLimits
 
 logger = logging.getLogger(__name__)
 
 
-# Default hard limits (can be overridden by config)
+# Import limits from central module
 DEFAULT_LIMITS = {
-    'max_position_pct': 0.20,      # 20% max per position
-    'max_sector_pct': 0.40,        # 40% max per sector
-    'max_correlation': 0.70,       # Max correlation threshold
-    'max_drawdown': 0.15,          # 15% max drawdown
-    'min_cash_pct': 0.10,          # 10% min cash reserve
-    'max_leverage': 1.0,           # No leverage by default
-    'max_daily_loss_pct': 0.05    # 5% max daily loss
+    'max_position_pct': RiskLimits.MAX_POSITION_PCT,
+    'max_sector_pct': RiskLimits.MAX_SECTOR_PCT,
+    'max_correlation': RiskLimits.MAX_CORRELATION,
+    'max_drawdown': RiskLimits.MAX_DRAWDOWN,
+    'min_cash_pct': RiskLimits.MIN_CASH_PCT,
+    'max_leverage': RiskLimits.MAX_LEVERAGE,
+    'max_daily_loss_pct': RiskLimits.MAX_DAILY_LOSS
 }
 
 

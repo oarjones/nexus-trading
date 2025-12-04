@@ -15,6 +15,16 @@ from uuid import uuid4
 from .base import BaseAgent
 from .messaging import MessageBus
 from .schemas import TradingSignal, RiskRequest, RiskResponse, Decision
+from ..core.constants import (
+    DECISION_THRESHOLD,
+   REDUCED_THRESHOLD,
+    PENDING_VALIDATION_TIMEOUT_SECONDS,
+    WEIGHT_TECHNICAL_ANALYST,
+    WEIGHT_FUNDAMENTAL_ANALYST,
+    WEIGHT_SENTIMENT_ANALYST,
+    REDIS_KEY_AUDIT_DECISIONS,
+    REDIS_AUDIT_LOG_MAX_SIZE
+)
 import redis
 
 logger = logging.getLogger(__name__)
@@ -38,15 +48,15 @@ class OrchestratorAgent(BaseAgent):
     - Risk rejects → Discard + log reason
     """
     
-    # Decision thresholds
-    DECISION_THRESHOLD = 0.65
-    REDUCED_THRESHOLD = 0.50
+    # Decision thresholds (from constants)
+    DECISION_THRESHOLD = DECISION_THRESHOLD
+    REDUCED_THRESHOLD = REDUCED_THRESHOLD
     
-    # Weights by agent type (for multi-agent future)
+    # Weights by agent type (from constants)
     WEIGHTS = {
-        "technical_analyst": 0.40,
-        "fundamental_analyst": 0.30,  # Future
-        "sentiment_analyst": 0.30,     # Future
+        "technical_analyst": WEIGHT_TECHNICAL_ANALYST,
+        "fundamental_analyst": WEIGHT_FUNDAMENTAL_ANALYST,  # Future
+        "sentiment_analyst": WEIGHT_SENTIMENT_ANALYST,     # Future
     }
     
     def __init__(
@@ -66,7 +76,7 @@ class OrchestratorAgent(BaseAgent):
             message_bus: Shared MessageBus instance
             redis_client: Redis client for state management
         """
-        super().__init__("orchestrator", config, message_bus)
+        super().__init__("orchestrator", config, message_bus, redis_client)
         
         self.redis = redis_client
         
@@ -135,11 +145,12 @@ class OrchestratorAgent(BaseAgent):
         capital = await self._get_capital()
         positions = await self._get_positions()
         
-        # Create risk validation request
+        # Create risk validation request with correlation_id
         request = RiskRequest(
             signal=signal,
             capital=capital,
-            current_positions=positions
+            current_positions=positions,
+            correlation_id=signal.correlation_id  # Propagate correlation_id for tracing
         )
         
         # Store pending validation
@@ -205,7 +216,8 @@ class OrchestratorAgent(BaseAgent):
                 f"Score: {score:.2f}, "
                 f"Sizing: {sizing_factor:.0%}, "
                 f"Risk adjustments: {len(response.adjustments)}"
-            )
+            ),
+            correlation_id=signal.correlation_id  # Propagate for tracing
         )
         
         self.bus.publish("decisions", decision)
@@ -302,9 +314,9 @@ class OrchestratorAgent(BaseAgent):
         }
         
         try:
-            # Add to audit log list (keep last 1000)
-            self.redis.lpush("audit:decisions", json.dumps(log_entry))
-            self.redis.ltrim("audit:decisions", 0, 999)
+            # Add to audit log list (keep last N entries)
+            self.redis.lpush(REDIS_KEY_AUDIT_DECISIONS, json.dumps(log_entry))
+            self.redis.ltrim(REDIS_KEY_AUDIT_DECISIONS, 0, REDIS_AUDIT_LOG_MAX_SIZE - 1)
         except Exception as e:
             self.logger.error(f"Error logging decision: {e}")
     
@@ -315,7 +327,7 @@ class OrchestratorAgent(BaseAgent):
         
         for request_id, pending in self._pending_validations.items():
             age = (now - pending["timestamp"]).total_seconds()
-            if age > 30:  # 30 second timeout
+            if age > PENDING_VALIDATION_TIMEOUT_SECONDS:
                 expired_keys.append(request_id)
         
         for key in expired_keys:

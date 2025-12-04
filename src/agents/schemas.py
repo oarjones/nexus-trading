@@ -52,6 +52,7 @@ class TradingSignal(BaseModel):
     """
     message_id: str = Field(default_factory=lambda: str(uuid4()))
     timestamp: datetime = Field(default_factory=datetime.utcnow)
+    correlation_id: Optional[str] = Field(default_factory=lambda: str(uuid4()))  # For request tracing
     from_agent: str
     symbol: str
     direction: Direction
@@ -95,6 +96,7 @@ class RiskRequest(BaseModel):
     message_id: str = Field(default_factory=lambda: str(uuid4()))
     request_id: str = Field(default_factory=lambda: str(uuid4()))
     timestamp: datetime = Field(default_factory=datetime.utcnow)
+    correlation_id: Optional[str] = None  # Inherited from signal for tracing
     signal: TradingSignal
     capital: float = Field(gt=0)
     current_positions: list[dict] = Field(default_factory=list)
@@ -126,6 +128,7 @@ class RiskResponse(BaseModel):
     message_id: str = Field(default_factory=lambda: str(uuid4()))
     request_id: str
     timestamp: datetime = Field(default_factory=datetime.utcnow)
+    correlation_id: Optional[str] = None  # Inherited from request for tracing
     approved: bool
     original_size: int = Field(ge=0)
     adjusted_size: int = Field(ge=0)
@@ -159,6 +162,7 @@ class Decision(BaseModel):
     """
     decision_id: str = Field(default_factory=lambda: str(uuid4()))
     timestamp: datetime = Field(default_factory=datetime.utcnow)
+    correlation_id: Optional[str] = None  # Inherited from signal for tracing
     signal: TradingSignal
     score: float = Field(ge=0.0, le=1.0)
     action: str  # "execute" or "discard"
