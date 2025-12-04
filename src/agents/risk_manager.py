@@ -6,7 +6,9 @@ appropriate position sizing with adjustments.
 """
 
 import asyncio
+import json
 import logging
+import redis
 from typing import Dict, Any, Optional, List, Tuple
 from datetime import datetime
 from uuid import uuid4
@@ -43,34 +45,6 @@ class RiskManagerAgent(BaseAgent):
     MAX_SECTOR_PCT = 0.40
     MAX_CORRELATION = 0.70
     MAX_DRAWDOWN = 0.15
-    MIN_CASH_PCT = 0.10
-    
-    def __init__(
-        self,
-        config: Dict[str, Any],
-        message_bus: MessageBus,
-        mcp_servers: MCPServers
-    ):
-        """
-        Initialize Risk Manager Agent.
-        
-        Args:
-            config: Configuration dict with:
-                - base_risk_per_trade: Base risk per trade (e.g., 0.01 = 1%)
-                - kelly_fraction: Kelly criterion fraction (e.g., 0.25 = 25%)
-                - drawdown_check_seconds: How often to check drawdown
-            message_bus: Shared MessageBus instance
-            mcp_servers: MCP server URLs
-        """
-        super().__init__("risk_manager", config, message_bus)
-        
-        self.mcp_servers = mcp_servers
-        self.mcp_client = MCPClient()
-        
-        # Configuration
-        self.base_risk_per_trade = config.get("base_risk_per_trade", 0.01)
-        self.kelly_fraction = config.get("kelly_fraction", 0.25)
-        self.drawdown_check_seconds = config.get("drawdown_check_seconds", 10)
         
         # State
         self._kill_switch_activated = False
