@@ -7,6 +7,7 @@ Detects current market regime using simple rules:
 - Volatility for risk assessment
 """
 
+from datetime import timezone
 import logging
 import sys
 from pathlib import Path
@@ -183,7 +184,7 @@ async def get_regime_tool(args: Dict[str, Any], engine) -> Dict[str, Any]:
                 'current_price': round(current_price, 2),
                 'sma_200': round(sma_200, 2)
             },
-            'timestamp': datetime.now().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         }
     
     except Exception as e:

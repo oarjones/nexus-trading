@@ -10,6 +10,7 @@ Example:
     >>> feature_issues = checker.check_features(features_df)
 """
 
+from datetime import timezone
 import logging
 from typing import Dict, List, Tuple
 from datetime import date, datetime, timedelta
@@ -340,7 +341,7 @@ class DataQualityChecker:
             'total_issues': len(all_issues),
             'errors': sum(1 for i in all_issues if i['type'] == 'error'),
             'warnings': sum(1 for i in all_issues if i['type'] == 'warning'),
-            'timestamp': datetime.now().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         }
         
         self.report_metrics(metrics)

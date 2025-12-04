@@ -20,6 +20,7 @@ Usage:
     python scripts/run_scheduler.py --daemon
 """
 
+from datetime import timezone
 import sys
 import os
 import logging
@@ -105,7 +106,7 @@ def run_once_mode(scheduler: DataScheduler):
     results = []
     
     for job_name, job_func in jobs:
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] Running: {job_name}")
+        print(f"[{datetime.now(timezone.utc).strftime('%H:%M:%S')}] Running: {job_name}")
         print('-' * 70)
         
         try:
@@ -159,7 +160,7 @@ def run_daemon_mode(scheduler: DataScheduler):
     print("DATA PIPELINE SCHEDULER")
     print("=" * 70)
     print()
-    print(f"Started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"Started at: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}")
     print()
     print("Scheduled jobs:")
     print("  - 18:30 CET: OHLCV Update")

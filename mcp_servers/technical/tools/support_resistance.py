@@ -4,6 +4,7 @@ Support and resistance levels detection tool.
 Finds support and resistance levels using local extrema (peaks and troughs).
 """
 
+from datetime import timezone
 import logging
 import sys
 from pathlib import Path
@@ -73,7 +74,7 @@ async def find_sr_levels_tool(args: Dict[str, Any], engine) -> Dict[str, Any]:
     
     try:
         # Load OHLCV data
-        end_date = datetime.now()
+        end_date = datetime.now(timezone.utc)
         start_date = end_date - timedelta(days=period)
         
         query = text("""
@@ -169,7 +170,7 @@ async def find_sr_levels_tool(args: Dict[str, Any], engine) -> Dict[str, Any]:
             'current_price': round(current_price, 2),
             'support_levels': support_levels,
             'resistance_levels': resistance_levels,
-            'timestamp': datetime.now().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         }
     
     except Exception as e:

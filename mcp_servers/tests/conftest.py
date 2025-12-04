@@ -4,6 +4,7 @@ Pytest configuration and fixtures for MCP servers tests.
 Provides common fixtures for testing all MCP servers.
 """
 
+from datetime import timezone
 import pytest
 import asyncio
 import os
@@ -41,7 +42,7 @@ def sample_ohlcv_data():
     import pandas as pd
     from datetime import datetime, timedelta
     
-    dates = pd.date_range(end=datetime.now(), periods=100, freq='D')
+    dates = pd.date_range(end=datetime.now(timezone.utc), periods=100, freq='D')
     data = {
         'time': dates,
         'open': [100 + i * 0.5 for i in range(100)],

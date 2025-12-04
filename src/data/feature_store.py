@@ -12,6 +12,7 @@ Example:
     >>> loaded = store.load('AAPL', date(2024, 11, 1), date(2024, 12, 1))
 """
 
+from datetime import timezone
 import logging
 import json
 from pathlib import Path
@@ -364,7 +365,7 @@ class FeatureStore:
                         {
                             'feature_name': feature_name,
                             'symbol': symbol,
-                            'updated': datetime.now()
+                            'updated': datetime.now(timezone.utc)
                         }
                     )
                 

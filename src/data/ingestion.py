@@ -10,6 +10,7 @@ Example:
     >>> print(f"Inserted: {result['inserted']}, Updated: {result['updated']}")
 """
 
+from datetime import timezone
 import logging
 from typing import Dict, Tuple
 from datetime import datetime
@@ -248,7 +249,7 @@ class OHLCVIngester:
             # Count existing records before upsert
             with self.engine.connect() as conn:
                 # Create temporary table with data
-                temp_table = f"temp_{int(datetime.now().timestamp())}"
+                temp_table = f"temp_{int(datetime.now(timezone.utc).timestamp())}"
                 valid_df.to_sql(temp_table, conn, if_exists='replace', index=False, method='multi')
                 
                 # Perform upsert

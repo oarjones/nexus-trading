@@ -106,7 +106,8 @@ async def main():
     risk_manager = RiskManagerAgent(
         config.get("risk_manager", {}),
         bus,
-        mcp_servers
+        mcp_servers,
+        redis_client
     )
     
     technical_analyst = TechnicalAnalystAgent(
@@ -118,7 +119,7 @@ async def main():
     orchestrator = OrchestratorAgent(
         config.get("orchestrator", {}),
         bus,
-        redis_client
+        redis_client,
     )
     
     agents = [risk_manager, technical_analyst, orchestrator]

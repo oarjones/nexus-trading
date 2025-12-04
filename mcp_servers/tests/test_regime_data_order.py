@@ -5,6 +5,7 @@ Verifies that technical indicators are calculated on chronologically
 ordered data, not DESC ordered data.
 """
 
+from datetime import timezone
 import pytest
 import pandas as pd
 import numpy as np
@@ -29,7 +30,7 @@ async def test_regime_data_ordering_with_mock():
     and verifies that the tool correctly reorders it before calculations.
     """
     # Create test data: ascending close prices
-    dates = pd.date_range(end=datetime.now(), periods=250, freq='D')
+    dates = pd.date_range(end=datetime.now(timezone.utc), periods=250, freq='D')
     test_data = pd.DataFrame({
         'time': dates,
         'close': np.linspace(100, 150, 250)  # Linearly increasing prices
@@ -71,7 +72,7 @@ async def test_regime_insufficient_data_validation():
     """Test that regime tool validates minimum data requirements."""
     
     # Create insufficient data (only 150 rows, need 200+)
-    dates = pd.date_range(end=datetime.now(), periods=150, freq='D')
+    dates = pd.date_range(end=datetime.now(timezone.utc), periods=150, freq='D')
     insufficient_data = pd.DataFrame({
         'time': dates,
         'close': np.random.rand(150) * 100 + 100
@@ -94,7 +95,7 @@ async def test_regime_current_price_is_latest():
     """Verify that current_price reflects the most recent data point."""
     
     # Create data where most recent price is clearly identifiable
-    dates = pd.date_range(end=datetime.now(), periods=250, freq='D')
+    dates = pd.date_range(end=datetime.now(timezone.utc), periods=250, freq='D')
     test_data = pd.DataFrame({
         'time': dates,
         'close': [100.0] * 249 + [999.99]  # Last price is 999.99

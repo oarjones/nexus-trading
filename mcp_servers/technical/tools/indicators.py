@@ -4,6 +4,7 @@ Technical indicators calculation tool.
 Calculates technical indicators for a symbol using IndicatorEngine.
 """
 
+from datetime import timezone
 import logging
 import sys
 from pathlib import Path
@@ -72,7 +73,7 @@ async def calculate_indicators_tool(args: Dict[str, Any], engine) -> Dict[str, A
     try:
         # Load OHLCV data for analysis (need enough for longest indicator = SMA200)
         lookback_days = max(period, 250)  # Need 250 for SMA200
-        end_date = datetime.now()
+        end_date = datetime.now(timezone.utc)   
         start_date = end_date - timedelta(days=lookback_days)
         
         query = text("""

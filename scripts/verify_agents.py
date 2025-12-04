@@ -287,7 +287,7 @@ class VerificationSuite:
         print("=" * 70)
         print("NEXUS TRADING - PHASE 3 VERIFICATION")
         print("=" * 70)
-        print(f"Timestamp: {datetime.now().isoformat()}")
+        print(f"Timestamp: {datetime.now(timezone.utc).isoformat()}")
         print()
         
         # Infrastructure checks

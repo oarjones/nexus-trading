@@ -220,12 +220,14 @@ class TestBaseAgentErrorHandling:
     async def test_max_errors_stops_agent(self, test_agent):
         """Test that agent stops after max consecutive errors."""
         test_agent.should_error = True
-        test_agent.error_count_to_throw = 10  # More than max
+        test_agent.error_count_to_throw = 6  # Just above max (5)
         
         await test_agent.start()
         
         # Wait for agent to hit max errors and stop
-        await asyncio.sleep(2.0)
+        # With exponential backoff: 2s, 4s, 8s, 16s, 32s
+        # We wait for first 5 errors: 2+4+8 = 14s + margin
+        await asyncio.sleep(18.0)  # Increased from 10.0
         
         # Agent should have stopped itself
         assert test_agent.running is False
@@ -240,8 +242,9 @@ class TestBaseAgentErrorHandling:
         
         await test_agent.start()
         
-        # Wait for errors
-        await asyncio.sleep(0.7)
+        # Wait for errors to accumulate
+        # First error: immediate, second error: 2s backoff = ~2.5s total
+        await asyncio.sleep(3.0)  # Increased from 0.7
         
         error_count_after_errors = test_agent._error_count
         assert error_count_after_errors > 0
@@ -249,8 +252,10 @@ class TestBaseAgentErrorHandling:
         # Now stop errors (agent will recover)
         test_agent.error_count_to_throw = 0
         
-        # Wait for multiple successful iterations (with exponential backoff)
-        await asyncio.sleep(1.5)
+        # Wait for multiple successful iterations
+        # After 2 errors, backoff is 4s, then it needs to succeed and reset
+        # Total: 4s backoff + processing time + margin
+        await asyncio.sleep(6.0)  # Increased from 1.5
         
         # Error count should reset
         assert test_agent._error_count == 0

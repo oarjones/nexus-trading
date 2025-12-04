@@ -11,6 +11,7 @@ Example:
     >>> df = await provider.get_historical('AAPL', '1 Y', '1 day')
 """
 
+from datetime import timezone
 import logging
 import asyncio
 from datetime import datetime, date
@@ -173,7 +174,7 @@ class IBKRProvider:
                     'ask': float(ticker.ask) if ticker.ask == ticker.ask else None,
                     'last': float(ticker.last) if ticker.last == ticker.last else None,
                     'volume': int(ticker.volume) if ticker.volume == ticker.volume else 0,
-                    'timestamp': datetime.now().isoformat()
+                    'timestamp': datetime.now(timezone.utc).isoformat()
                 }
                 
                 logger.debug(f"Quote for {symbol}: {quote}")
