@@ -1,0 +1,86 @@
+# config/ml_models.yaml
+# Configuración de modelos de Machine Learning para Nexus Trading
+
+# =============================================================================
+# DETECTOR DE RÉGIMEN
+# =============================================================================
+regime_detector:
+  # Modelo activo: "hmm" o "rules"
+  # Cambiar este valor para usar diferente modelo
+  active: "hmm"
+  
+  # Directorio donde se guardan los modelos entrenados
+  models_dir: "models"
+  
+  # Configuración por tipo de modelo
+  models:
+    # -------------------------------------------------------------------------
+    # Hidden Markov Model
+    # -------------------------------------------------------------------------
+    hmm:
+      # Número de estados ocultos (regímenes)
+      n_states: 4
+      
+      # Iteraciones máximas del algoritmo EM
+      n_iter: 100
+      
+      # Tipo de matriz de covarianza: "full", "diag", "tied", "spherical"
+      covariance_type: "full"
+      
+      # Features usados para detección
+      features:
+        - "returns_5d"
+        - "volatility_20d"
+        - "adx_14"
+        - "volume_ratio"
+      
+      # Semilla para reproducibilidad
+      random_state: 42
+      
+      # Tolerancia para convergencia
+      tol: 0.0001
+    
+    # -------------------------------------------------------------------------
+    # Baseline de Reglas
+    # -------------------------------------------------------------------------
+    rules:
+      # Umbrales para régimen VOLATILE
+      volatile_vol_threshold: 0.25
+      volatile_adx_threshold: 40
+      volatile_vol_with_adx: 0.20
+      
+      # Umbrales para régimen BULL
+      bull_return_threshold: 0.02
+      bull_max_vol: 0.20
+      bull_min_adx: 20
+      
+      # Umbrales para régimen BEAR
+      bear_return_threshold: -0.02
+      bear_max_vol: 0.30
+      bear_min_adx: 20
+      
+      # Umbrales para régimen SIDEWAYS
+      sideways_return_range: 0.02
+      sideways_max_vol: 0.20
+      sideways_max_adx: 25
+
+# =============================================================================
+# CACHE DE PREDICCIONES
+# =============================================================================
+prediction_cache:
+  enabled: true
+  ttl_seconds: 300  # 5 minutos
+  redis_key_prefix: "ml:regime"
+
+# =============================================================================
+# MONITOREO
+# =============================================================================
+monitoring:
+  # Log de predicciones
+  log_predictions: true
+  
+  # Métricas a Prometheus
+  export_metrics: true
+  
+  # Alertas si confianza baja
+  low_confidence_threshold: 0.5

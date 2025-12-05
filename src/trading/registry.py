@@ -311,10 +311,10 @@ class StrategyRegistry:
         Weight formula:
             raw_weight = sharpe_3m * (1 - current_dd / max_dd)
         
-        Constraints:
-            - Minimum weight: 10%
-            - Maximum weight: 50%
-            - Weights sum to 1.0
+        Constraints (adaptive based on number of strategies):
+            - 2 strategies: No constraints (0-100%) to show performance differences
+            - 3+ strategies: Min 10%, Max 50% to enforce diversification
+            - Weights always sum to 1.0
         
         Args:
             active_strategy_ids: List of active strategy IDs
@@ -329,7 +329,7 @@ class StrategyRegistry:
             ...     "mean_reversion": {"sharpe_3m": 1.0, "drawdown": 0.03}
             ... }
             >>> weights = registry.calculate_weights(["swing_momentum", "mean_reversion"], performance)
-            >>> # weights = {"swing_momentum": 0.6, "mean_reversion": 0.4}
+            >>> # weights = {"swing_momentum": ~0.6, "mean_reversion": ~0.4} (varies by performance)
         """
         if not active_strategy_ids:
             return {}
@@ -364,17 +364,55 @@ class StrategyRegistry:
         for strategy_id in weights:
             weights[strategy_id] /= total_raw
         
-        # Apply min/max constraints
-        min_weight = 0.10
-        max_weight = 0.50
+        # Apply min/max constraints based on number of strategies
+        num_strategies = len(active_strategy_ids)
         
-        for strategy_id in weights:
-            weights[strategy_id] = max(min_weight, min(max_weight, weights[strategy_id]))
+        if num_strategies == 2:
+            # For 2 strategies, use no constraints to show performance differences
+            min_weight = 0.0
+            max_weight = 1.0
+        else:
+            # For 3+ strategies, enforce diversification
+            min_weight = 0.10
+            max_weight = 0.50
         
-        # Re-normalize after constraints
-        total = sum(weights.values())
-        if total > 0:
-            weights = {sid: w / total for sid, w in weights.items()}
+        # Iteratively apply constraints to maintain sum=1.0
+        max_iterations = 10
+        for _ in range(max_iterations):
+            adjusted = False
+            total = sum(weights.values())
+            
+            # Clip to constraints
+            for strategy_id in list(weights.keys()):
+                old_weight = weights[strategy_id]
+                new_weight = max(min_weight, min(max_weight, old_weight))
+                if abs(new_weight - old_weight) > 1e-9:
+                    weights[strategy_id] = new_weight
+                    adjusted = True
+            
+            if not adjusted:
+                break
+            
+            # Redistribute excess/deficit among unconstrained strategies
+            total = sum(weights.values())
+            if abs(total - 1.0) > 1e-9:
+                # Find strategies not at limits
+                flexible_ids = [
+                    sid for sid in weights
+                    if min_weight < weights[sid] < max_weight
+                ]
+                
+                if flexible_ids:
+                    # Adjust flexible weights proportionally
+                    adjustment_factor = (1.0 - sum(
+                        weights[sid] for sid in weights if sid not in flexible_ids
+                    )) / sum(weights[sid] for sid in flexible_ids)
+                    
+                    for sid in flexible_ids:
+                        weights[sid] *= adjustment_factor
+                else:
+                    # All at limits, just normalize
+                    weights = {sid: w / total for sid, w in weights.items()}
         
         self.logger.info(
             f"Calculated weights for {len(weights)} strategies: "

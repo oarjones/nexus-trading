@@ -141,6 +141,20 @@ services:
     networks:
       - trading_network
 
+  # MCP ML Models Server
+  mcp_ml_models:
+    build:
+      context: .
+      dockerfile: mcp_servers/Dockerfile
+    container_name: mcp_ml_models
+    ports:
+      - "3005:3005"
+    command: python -m ml_models.server
+    working_dir: /app/mcp_servers
+    restart: unless-stopped
+    networks:
+      - trading_network
+
 networks:
   trading_network:
     driver: bridge

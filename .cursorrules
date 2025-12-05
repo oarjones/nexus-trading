@@ -1,98 +1,787 @@
-# Project Rules & AI Assistant Guidelines
+# Nexus Trading - AI Assistant Guidelines
+# Version: 2.1
+# Last Updated: December 2024
 
-## 1. General Behavior
-- **Language:** English ONLY for all code, comments, documentation, and commit messages.
-- **Conciseness:** Be brief and direct. Avoid unnecessary conversational filler.
-- **Proactivity:** Anticipate next steps but ask before major architectural changes.
+## 1. Project Context
 
-## 2. Code Quality & Style
-- **Standards:** Follow PEP 8 for Python.
-- **Principles:** Apply SOLID, DRY (Don't Repeat Yourself), and KISS (Keep It Simple, Stupid) principles.
-- **Clean Code:**
-  - Meaningful variable and function names.
-  - Small, focused functions (single responsibility).
-  - Avoid magic numbers/strings; use constants.
+### What is Nexus Trading?
+An autonomous AI-powered trading bot using multi-agent architecture with MCP (Model Context Protocol).
+**Goal:** Financial independence through systematic swing trading.
+**Starting Capital:** ~25,000€ real (25,000€ paper trading for development)
+**Timeline:** 6-10 years realistic horizon
 
-## 3. Testing (CRITICAL)
-    └── trading/
+### Project Philosophy
+```
+CORE PRINCIPLES:
+═══════════════════
+
+1. MVP in paper trading BEFORE perfect backtesting
+   - Paper trading IS the laboratory
+   - Real feedback > historical metrics
+
+2. Modular & swappable architecture
+   - ML models: common interface, swappable implementations
+   - LLMs: common interface, easy Claude ↔ GPT-4 ↔ Gemini switch
+   - Strategies: common interface, enable/disable via config
+
+3. Metrics to compare everything
+   - Every trade tagged with: strategy, model, regime, etc.
+   - A/B experiment system
+   - Comparative dashboard
+
+4. Swing first, intraday later
+   - Fewer moving parts initially
+   - Intraday added when swing works (50 trades, Sharpe > 0.5)
+```
+
+### Confirmed Decisions
+| Aspect | Decision |
+|--------|----------|
+| Paper trading capital | 25,000€ |
+| Primary data source | IBKR (not Yahoo Finance) |
+| Real-time data | Delayed OK for development (15 min) |
+| Markets | EU + US (more opportunities) |
+| LLM for AI Agent | Claude (architecture supports GPT-4/Gemini switch) |
+| AI Agent autonomy | Moderate by default (conservative/moderate/experimental) |
+
+---
+
+## 2. Documentation Structure
+
+### READ BEFORE IMPLEMENTING
+```
+docs/
+├── 00_roadmap.md                      # Project roadmap
+├── 01_arquitectura_vision_general.md  # System architecture
+├── 02_arquitectura_datos.md           # Data architecture
+├── 03_sistema_agentes_mcp.md          # Agent system design
+│
+├── fase_0_infraestructura.md          # Docker, DB, Redis setup
+├── fase_1_data_pipeline.md            # Market data pipeline
+├── fase_2_mcp_servers.md              # MCP server implementation
+├── fase_3_agentes_core.md             # Core agents
+│
+├── GRAFANA_SETUP.md                   # Grafana configuration
+├── IBKR_SETUP.md                      # IBKR setup guide
+│
+└── nuevo_enfoque/                     # ⭐ NEW IMPLEMENTATION DOCS
+    ├── nexus_trading_new_concept.md   # Handoff document (START HERE)
+    ├── fase_a1_extensiones_base.md    # IBKR integration, metrics tables
+    ├── fase_a2_ml_modular.md          # Modular ML (HMM regime detector)
+    ├── fase_b1_estrategias_swing.md   # Swing trading strategies
+    ├── fase_b2_ai_agent.md            # Claude AI agent
+    ├── fase_c1_metricas.md            # Metrics system
+    ├── fase_c2_intraday.md            # Intraday strategies (post-MVP)
+```
+
+**CRITICAL:** 
+- For NEW implementations, use `docs/nuevo_enfoque/` documents
+- Documents fase_0 to fase_3 are BASE infrastructure (already designed)
+- Documents fase_a1 to fase_c2 are the NEW modular approach
+
+### Implementation Order
+```
+Phase A: Core + ML (2 weeks)
+├── A1: Extensions to existing Phases 0-3
+│   ├── IBKR as primary data source
+│   ├── New metrics tables in PostgreSQL
+│   └── mcp-ml-models server
+└── A2: Modular ML
+    ├── Interfaces (RegimeDetector ABC)
+    ├── HMM implementation
+    ├── Rules baseline (comparison)
+    └── Factory + YAML configuration
+
+Phase B: Swing Strategies (2 weeks)
+├── B1: ETF Momentum + Strategy Framework
+│   ├── Interfaces (TradingStrategy ABC)
+│   ├── Implementation
+│   └── HMM integration
+└── B2: AI Agent
+    ├── Interfaces (LLMAgent ABC)
+    ├── Claude Agent
+    ├── Prompts by autonomy level
+    └── Parallel execution with ETF Momentum
+
+Phase C: Metrics + Intraday (2 weeks)
+├── C1: Metrics System
+│   ├── Trade collector
+│   ├── Metrics aggregator
+│   ├── A/B experiments
+│   └── Grafana dashboard
+└── C2: Intraday (AFTER swing MVP validation)
+    ├── Mean Reversion Intraday
+    ├── Volatility Breakout
+    └── Real-time data toggle
+```
+
+---
+
+## 3. General Behavior
+
+- **Language:** English ONLY for code, comments, docstrings, and commits.
+- **Conciseness:** Be brief and direct. No conversational filler.
+- **Proactivity:** Anticipate issues but ASK before major architectural changes.
+- **Documentation First:** Read `docs/nuevo_enfoque/fase_*.md` before coding.
+- **Verify Before Proceeding:** Run verification scripts after each task.
+
+---
+
+## 4. Project Structure
+
+```
+nexus-trading/
+├── src/
+│   ├── core/                    # Core utilities and constants
+│   │   ├── config.py            # Centralized configuration
+│   │   ├── constants.py         # System-wide constants
+│   │   ├── risk_limits.py       # Risk parameters (SINGLE SOURCE)
+│   │   └── exceptions.py        # Custom exceptions
+│   │
+│   ├── data/                    # Data layer
+│   │   ├── providers/           # Data sources
+│   │   │   ├── base.py          # DataProvider ABC
+│   │   │   ├── yahoo.py         # Yahoo Finance (fallback)
+│   │   │   ├── ibkr.py          # Interactive Brokers (PRIMARY)
+│   │   │   └── realtime_toggle.py # Delayed/RT switch
+│   │   ├── storage/             # Database operations
+│   │   ├── processors/          # Data transformation
+│   │   └── intraday_manager.py  # Intraday data handling
+│   │
+│   ├── strategies/              # Trading strategies
+│   │   ├── interfaces.py        # TradingStrategy ABC, Signal dataclass
+│   │   ├── registry.py          # StrategyRegistry singleton
+│   │   ├── runner.py            # StrategyRunner (swing)
+│   │   ├── swing/               # Swing strategies
+│   │   │   ├── etf_momentum.py  # ETF Momentum Rotation
+│   │   │   └── mean_reversion_swing.py
+│   │   └── intraday/            # Intraday strategies (Phase C2)
+│   │       ├── base.py          # IntraDayStrategy ABC
+│   │       ├── mixins.py        # IntraDayMixin
+│   │       ├── mean_reversion.py
+│   │       ├── volatility_breakout.py
+│   │       └── runner.py        # IntraDayRunner
+│   │
+│   ├── ml/                      # Machine Learning
+│   │   ├── interfaces.py        # RegimeDetector ABC, RegimePrediction
+│   │   ├── factory.py           # Create models from config
+│   │   └── models/
+│   │       ├── hmm_regime.py    # HMM implementation (hmmlearn)
+│   │       ├── rules_baseline.py # Rules-based fallback
+│   │       └── ppo_regime.py    # Future: RL
+│   │
+│   ├── mcp_servers/             # MCP Server implementations
+│   │   ├── base.py              # BaseMCPServer (connection pooling)
+│   │   ├── market_data/         # mcp-market-data (port 3001)
+│   │   ├── technical/           # mcp-technical-analysis (port 3002)
+│   │   ├── risk/                # mcp-risk-manager (port 3003)
+│   │   ├── execution/           # mcp-ibkr (port 3004)
+│   │   └── ml_models/           # mcp-ml-models (port 3005) - NEW
+│   │
+│   ├── agents/                  # AI Agents
+│   │   ├── base.py              # BaseAgent
+│   │   ├── technical_analyst.py # TechnicalAnalystAgent
+│   │   ├── risk_manager.py      # RiskManagerAgent
+│   │   ├── orchestrator.py      # OrchestratorAgent
+│   │   └── llm/                 # LLM-based agents
+│   │       ├── interfaces.py    # LLMAgent ABC, AgentDecision
+│   │       ├── claude_agent.py  # Claude implementation
+│   │       └── prompts/         # Prompts by autonomy
+│   │           ├── conservative.py
+│   │           ├── moderate.py
+│   │           └── experimental.py
+│   │
+│   ├── execution/               # Order execution
+│   │   ├── broker_interface.py  # BrokerInterface ABC
+│   │   ├── ibkr_executor.py     # IBKR implementation
+│   │   └── paper_trader.py      # Paper trading
+│   │
+│   ├── metrics/                 # Metrics system (Phase C1)
+│   │   ├── collector.py         # Capture trades, decisions
+│   │   ├── aggregator.py        # Calculate Sharpe, MaxDD, etc.
+│   │   ├── experiments.py       # A/B testing
+│   │   └── schemas.py           # Metric schemas
+│   │
+│   ├── monitoring/              # Observability
+│   │   ├── metrics.py           # MetricsCollector
+│   │   ├── alerts.py            # TelegramAlerter
+│   │   └── dashboards/          # Grafana configs
+│
+├── config/                      # Configuration files
+│   ├── settings.yaml            # Main settings
+│   ├── strategies.yaml          # Strategy configs
+│   ├── models.yaml              # ML model configs
+│   ├── agents.yaml              # AI agent configs
+│   ├── data_sources.yaml        # Data source configs
+│   ├── intraday.yaml            # Intraday settings
+│   └── logging.yaml             # Logging config
+│
+├── tests/                       # Test files (mirror src/)
+│   ├── conftest.py              # Shared fixtures
+│   ├── test_data/
+│   ├── test_strategies/
+│   ├── test_ml/
+│   ├── test_mcp_servers/
+│   └── test_agents/
+│
+├── scripts/                     # Utility scripts
+│   ├── verify_fase_*.py         # Phase verification scripts
+│   └── backtest.py              # Backtesting runner
+│
+├── docs/                        # Documentation
+│   ├── nuevo_enfoque/           # NEW implementation docs
+│   └── *.md                     # Architecture docs
+│
+└── docker/                      # Docker configurations
+    ├── docker-compose.yml
+    └── Dockerfile.*
+```
+
+---
+
+## 5. Key Interfaces (From nuevo_enfoque docs)
+
+### 5.1 RegimeDetector (ML)
+```python
+@dataclass
+class RegimePrediction:
+    regime: str                    # "BULL", "BEAR", "SIDEWAYS", "VOLATILE"
+    confidence: float              # 0.0 - 1.0
+    probabilities: dict[str, float]
+    model_id: str
+    inference_time_ms: float
+    metadata: Optional[dict] = None
+
+class RegimeDetector(ABC):
+    @property
+    @abstractmethod
+    def model_id(self) -> str: ...
     
-    tests/
-    ├── test_agents/  ← Tests (prefixed!)
-    ├── test_data/
-    └── test_trading/
-    ```
+    @abstractmethod
+    def fit(self, X: np.ndarray, y: Optional[np.ndarray] = None) -> "RegimeDetector": ...
+    
+    @abstractmethod
+    def predict(self, X: np.ndarray) -> RegimePrediction: ...
+    
+    @abstractmethod
+    def save(self, path: str) -> None: ...
+    
+    @classmethod
+    @abstractmethod
+    def load(cls, path: str) -> "RegimeDetector": ...
+```
 
-## 4. Documentation
-- **Docstrings:** Required for all public modules, classes, and functions. Use Google style or NumPy style.
-- **Comments:** Explain "why", not "what". Avoid obvious comments.
-- **README:** Every major directory (phase) should have a brief README explaining its purpose.
+### 5.2 TradingStrategy
+```python
+@dataclass
+class Signal:
+    strategy_id: str
+    symbol: str
+    direction: str              # "LONG", "SHORT", "CLOSE"
+    confidence: float
+    entry_price: Optional[float]
+    stop_loss: Optional[float]
+    take_profit: Optional[float]
+    size_suggestion: Optional[float]
+    regime_at_signal: str
+    reasoning: Optional[str]
+    metadata: Optional[dict]
 
-## 5. Error Handling & Logging
-- **Exceptions:** Use custom exception classes for domain-specific errors.
-- **Logging:** Use the standard `logging` library. Structured logging is preferred.
-- **No Silent Failures:** Never use bare `try-except` blocks. Log or re-raise errors.
+class TradingStrategy(ABC):
+    @property
+    @abstractmethod
+    def strategy_id(self) -> str: ...
+    
+    @property
+    @abstractmethod
+    def strategy_type(self) -> str: ...  # "swing" or "intraday"
+    
+    @property
+    @abstractmethod
+    def required_regime(self) -> list[str]: ...
+    
+    @abstractmethod
+    def generate_signals(self, market_data, regime, portfolio) -> list[Signal]: ...
+    
+    @abstractmethod
+    def should_close(self, position, market_data, regime) -> Optional[Signal]: ...
+```
 
-## 6. Technology Stack
-- **Language:** Python 3.10+
-- **Containerization:** Docker & Docker Compose
-- **Database:** TimescaleDB (PostgreSQL extension)
-- **Caching/Messaging:** Redis
-- **Architecture:** MCP (Model Context Protocol) for agents.
+### 5.3 LLMAgent
+```python
+@dataclass
+class AgentDecision:
+    actions: list[Signal]
+    reasoning: str
+    market_view: str            # "bullish", "bearish", "neutral"
+    confidence: float
+    model_used: str
+    autonomy_level: str
+    tokens_used: int
 
-## 7. Database Connection Management
-- **Connection Pooling:** ALWAYS use centralized connection pooling via `BaseMCPServer.db_engine`.
-- **Implementation:**
-  - MCP Servers: Pass `db_url` to `BaseMCPServer.__init__()` to initialize pooled engine.
-  - Tools: Accept `engine` parameter (SQLAlchemy Engine instance), NOT `db_url` string.
-  - Never create engines with `create_engine()` inside tools or methods.
-  - Never call `engine.dispose()` in tools (managed by BaseMCPServer).
-- **Pool Configuration:**
-  ```python
-  pool_size=5          # Base connections
-  max_overflow=10      # Additional connections under load
-  pool_pre_ping=True   # Verify before use
-  pool_recycle=3600    # Recycle after 1 hour
-  ```
+class LLMAgent(ABC):
+    @property
+    @abstractmethod
+    def agent_id(self) -> str: ...
+    
+    @abstractmethod
+    async def decide(self, context, autonomy_level="moderate") -> AgentDecision: ...
+    
+    @abstractmethod
+    def get_system_prompt(self, autonomy_level: str) -> str: ...
+```
 
-## 8. Workflow
-- **Phased Implementation:** Follow the roadmap phases strictly.
-- **Validation:** Verify each step before moving to the next.
+---
 
-## 9. Python Best Practices (Lessons Learned from Phase 3)
+## 6. Market Regime System (HMM)
 
-### Datetime (CRITICAL)
-- **NEVER use `datetime.utcnow()`** - Deprecated in Python 3.12+
-- **ALWAYS use `datetime.now(timezone.utc)`** for UTC timestamps
-- All datetime objects MUST be timezone-aware
-- Import: `from datetime import datetime, timezone`
+### States and Strategy Mapping
+| State | Characteristics | Active Strategies |
+|-------|----------------|-------------------|
+| BULL | Returns +, low vol, moderate ADX | ETF Momentum, AI Agent |
+| BEAR | Returns -, high vol, high ADX | Close only |
+| SIDEWAYS | Returns ~0, low vol, low ADX | Mean Reversion |
+| VOLATILE | Very high vol, variable returns | Pause all |
 
-### Implementation Completeness (CRITICAL)
-- **NEVER leave placeholder/stub implementations in production code**
-- **NO functions that return hardcoded values** (e.g., `return 0.0` always)
-- **NO TODO comments for critical functionality**
-- If stubbing temporarily:
-  - Document clearly what's stubbed and WHY
-  - Create explicit ticket/issue for completion
-  - Mark with `# TEMPORARY STUB - Issue #XXX` not just `# TODO`
-  
-### Error Handling and Scope
-- NEVER reuse loop variables outside their scope
-- Recalculate time-dependent values fresh when needed
-- Fail-safe defaults: Conservative values on errors (e.g., correlation=0.5, not 0.0)
-- Example: Calculate `pending_age` fresh for each item when logging
+### HMM Features
+```python
+hmm_features = [
+    'returns_5d',       # Weekly momentum
+    'volatility_20d',   # Recent risk
+    'adx_14',           # Trend strength
+    'volume_ratio',     # Activity vs normal
+]
+```
 
-### Redis and Dependencies
-- Classes using `self.redis` MUST receive `redis_client: redis.Redis` in [__init__](cci:1://file:///C:/projects/nexus-trading/src/agents/risk_manager.py:50:4-93:9)
-- Redis returns bytes - always decode or use `json.loads()`
-- Import ALL modules used (json, redis, etc.)
-- Complete type hints: `redis.Redis`, not just [redis](cci:1://file:///C:/projects/nexus-trading/tests/test_agents/test_messaging.py:28:0-31:37)
+---
 
-### Constants and Configuration
-- NO duplicate hardcoded values across files
-- Use centralized modules (e.g., [src/core/risk_limits.py](cci:7://file:///C:/projects/nexus-trading/src/core/risk_limits.py:0:0-0:0))
-- Import from single source of truth
+## 7. Planned Strategies
 
-### Async Best Practices
-- Handle `asyncio.CancelledError` separately
-- Exponential backoff: `min(2 ** retry_count, max_seconds)`
-- Yield to event loop: `await asyncio.sleep(small_value)`
+### Swing (High Priority - MVP)
+| ID | Name | Regime | Description |
+|----|------|--------|-------------|
+| `etf_momentum` | ETF Momentum | BULL | RSI + trend on EU/US ETFs |
+| `ai_agent_swing` | AI Agent | BULL | Claude decides based on context |
+
+### Intraday (After MVP Validation)
+| ID | Name | Regime | Description |
+|----|------|--------|-------------|
+| `mean_reversion_intraday` | Mean Reversion | SIDEWAYS | Buy dips, sell rallies |
+| `volatility_breakout` | Breakout | BULL/VOLATILE | Ride range breakouts |
+
+**Activation requirement:** Swing must have 50+ trades and Sharpe > 0.5
+
+---
+
+## 8. Code Quality Standards
+
+### 8.1 Python Standards
+- **Version:** Python 3.10+
+- **Style:** PEP 8 strictly enforced
+- **Principles:** SOLID, DRY, KISS
+- **Type Hints:** Required for all function signatures
+- **Docstrings:** Google style, required for public APIs
+
+### 8.2 Naming Conventions
+```python
+# Classes: PascalCase
+class TechnicalAnalystAgent:
+class MeanReversionIntraday:
+
+# Functions/Methods: snake_case
+def calculate_indicators():
+def get_market_regime():
+
+# Constants: UPPER_SNAKE_CASE
+MAX_POSITION_SIZE = 0.05
+DEFAULT_LOOKBACK_BARS = 100
+
+# Private: leading underscore
+def _internal_calculation():
+_cache: dict = {}
+
+# Folders/Directories: snake_case (CRITICAL)
+# ❌ NEVER use hyphens: mcp-servers, ml-models
+# ✅ ALWAYS use underscores: mcp_servers, ml_models
+```
+
+### 8.3 Import Order
+```python
+# 1. Standard library
+from datetime import datetime, timezone
+from typing import Optional, Dict, List
+import asyncio
+import logging
+
+# 2. Third-party
+import pandas as pd
+import numpy as np
+from sqlalchemy import create_engine
+
+# 3. Local imports
+from src.core.config import settings
+from src.strategies.interfaces import Signal, TradingStrategy
+```
+
+---
+
+## 9. Critical Implementation Patterns
+
+### 9.1 Datetime Handling (CRITICAL)
+```python
+# ❌ NEVER - Deprecated in Python 3.12+
+datetime.utcnow()
+
+# ✅ ALWAYS - Timezone-aware UTC
+from datetime import datetime, timezone
+datetime.now(timezone.utc)
+
+# ✅ For specific timezones (market hours)
+from zoneinfo import ZoneInfo
+datetime.now(ZoneInfo("America/New_York"))
+```
+
+### 9.2 Database Connection Pooling (CRITICAL)
+```python
+# ❌ NEVER - Creates new connection each time
+def my_tool(db_url: str):
+    engine = create_engine(db_url)  # BAD!
+
+# ✅ ALWAYS - Use pooled engine from BaseMCPServer
+def my_tool(engine: Engine):
+    with engine.connect() as conn:
+        result = conn.execute(query)
+
+# Pool configuration (in BaseMCPServer)
+pool_size=5
+max_overflow=10
+pool_pre_ping=True
+pool_recycle=3600
+```
+
+### 9.3 No Stub Implementations (CRITICAL)
+```python
+# ❌ NEVER - Silent failures
+def calculate_risk():
+    return 0.0  # TODO: implement
+
+# ✅ ALWAYS - Raise or implement fully
+def calculate_risk():
+    raise NotImplementedError("Risk calculation pending - Issue #123")
+
+# Or if temporary stub is absolutely necessary:
+def calculate_risk():
+    # TEMPORARY STUB - Issue #123: Implement proper risk calc
+    logger.warning("Using fallback risk calculation")
+    return 0.5  # Conservative default, not zero
+```
+
+### 9.4 Error Handling
+```python
+# ❌ NEVER - Silent catch-all
+try:
+    do_something()
+except:
+    pass
+
+# ✅ ALWAYS - Specific exceptions with logging
+try:
+    do_something()
+except ConnectionError as e:
+    logger.error(f"Connection failed: {e}")
+    raise
+except ValueError as e:
+    logger.warning(f"Invalid value: {e}, using default")
+    return default_value
+```
+
+### 9.5 Redis Usage
+```python
+# ❌ NEVER - Assumes string returns
+value = redis_client.get("key")
+data = value  # Could be bytes!
+
+# ✅ ALWAYS - Decode properly
+value = redis_client.get("key")
+if value:
+    data = json.loads(value.decode('utf-8'))
+```
+
+---
+
+## 10. Risk Management (NON-NEGOTIABLE)
+
+### 10.1 Hardcoded Limits (src/core/risk_limits.py)
+```python
+# NEVER change these without explicit approval
+MAX_PORTFOLIO_RISK_PCT = 0.02      # 2% max loss per trade
+MAX_POSITION_SIZE_PCT = 0.05       # 5% max per position
+MAX_DAILY_LOSS_PCT = 0.05          # 5% daily loss limit
+MAX_CORRELATION = 0.7              # Max correlation between positions
+FORCE_CLOSE_DRAWDOWN_PCT = 0.10    # Force close at 10% drawdown
+```
+
+### 10.2 Kill Switch
+```python
+# MUST be implemented and tested before ANY live trading
+class KillSwitch:
+    def check_and_execute(self) -> bool:
+        """Returns True if system should halt."""
+        if self._check_daily_loss():
+            self._close_all_positions()
+            self._disable_trading()
+            self._send_alert("KILL SWITCH ACTIVATED")
+            return True
+        return False
+```
+
+### 10.3 Paper Trading Requirements
+- **30 days minimum** paper trading before live
+- **50 trades minimum** for statistical significance
+- **Sharpe > 0.5** required for live approval
+- **Intraday disabled** until swing validated
+- **Intraday disabled** until swing validated
+
+---
+
+## 11. Capital Configuration
+
+### Paper Trading & Production
+- **Capital:** 25,000€ (both paper trading and future live)
+- **Max positions:** 5-10 concurrent
+- **Position sizing:** 5% max per position (1,250€)
+- **Daily loss limit:** 5% (1,250€)
+
+### Available Strategies (from start)
+| Strategy | Type | Regime | Status |
+|----------|------|--------|--------|
+| ETF Momentum | Swing | BULL | MVP - Active |
+| AI Agent Swing | Swing | BULL | MVP - Active |
+| Mean Reversion | Intraday | SIDEWAYS | Post-validation |
+| Volatility Breakout | Intraday | BULL/VOLATILE | Post-validation |
+
+### Intraday Activation Requirements
+Intraday strategies remain **disabled** until swing trading is validated:
+- Minimum 50 swing trades completed
+- Sharpe Ratio > 0.5
+- Max 20% capital allocation to intraday
+
+## 12. Configuration Files
+
+### models.yaml (ML)
+```yaml
+regime_detector:
+  active: "hmm"  # Options: hmm, rules, ppo
+  models:
+    hmm:
+      n_states: 4
+      covariance_type: "full"
+      n_iter: 100
+      features: ["returns_5d", "volatility_20d", "adx_14", "volume_ratio"]
+    rules:
+      bull_threshold: 0.02
+      bear_threshold: -0.02
+      volatility_high: 0.25
+```
+
+### agents.yaml (AI Agent)
+```yaml
+ai_agent:
+  active: "claude"
+  autonomy_level: "moderate"  # conservative, moderate, experimental
+  models:
+    claude:
+      model: "claude-sonnet-4-20250514"
+      max_tokens: 2000
+      temperature: 0.3
+```
+
+### data_sources.yaml
+```yaml
+data_source:
+  primary: "ibkr"
+  ibkr:
+    host: "127.0.0.1"
+    port: 7497              # Paper trading
+    client_id: 1
+    delayed_ok: true        # Accept 15 min delay
+  fallback: "yahoo"
+```
+
+---
+
+## 13. Testing Standards
+
+### Test Organization
+```
+tests/
+├── conftest.py              # Shared fixtures
+├── test_strategies/
+│   ├── conftest.py          # Strategy-specific fixtures
+│   ├── test_interfaces.py
+│   ├── swing/
+│   │   └── test_etf_momentum.py
+│   └── intraday/
+│       ├── test_mean_reversion.py
+│       └── test_volatility_breakout.py
+├── test_ml/
+│   ├── test_hmm_regime.py
+│   └── test_rules_baseline.py
+└── test_agents/
+    └── test_claude_agent.py
+```
+
+### Coverage Requirements
+- **Minimum:** 80% coverage for all modules
+- **Critical paths:** 95% coverage for:
+  - Risk management
+  - Order execution
+  - Position sizing
+
+---
+
+## 14. Verification Workflow
+
+### After Each Task
+```bash
+# 1. Run phase verification
+python scripts/verify_fase_X.py
+
+# 2. Run relevant tests
+pytest tests/test_<module>/ -v
+
+# 3. Check coverage
+pytest --cov=src/<module> --cov-report=term-missing
+```
+
+### Before Committing
+```bash
+# 1. Format code
+black src/ tests/
+isort src/ tests/
+
+# 2. Type check
+mypy src/
+# 3. Lint
+flake8 src/ tests/
+
+# 4. All tests pass
+pytest
+```
+
+---
+
+## 15. Technology Stack
+
+| Component | Technology | Purpose |
+|-----------|------------|---------|
+| Language | Python 3.10+ | Core development |
+| Database | TimescaleDB | Time-series data |
+| Cache/Messaging | Redis | Pub/sub, caching |
+| Containers | Docker | Deployment |
+| Broker | Interactive Brokers | Order execution (PRIMARY) |
+| Data (Fallback) | Yahoo Finance | Backup data source |
+| ML | scikit-learn, hmmlearn | Regime detection |
+| AI | Claude API (Anthropic) | AI agent |
+| Monitoring | Grafana + Prometheus | Dashboards |
+| Alerts | Telegram | Notifications |
+
+---
+
+## 16. Quick Reference Commands
+
+```bash
+# Start infrastructure
+docker-compose up -d timescaledb redis
+
+# Run all tests
+pytest -v
+
+# Run specific phase tests
+pytest tests/test_strategies/intraday/ -v
+
+# Generate coverage report
+pytest --cov=src --cov-report=html
+
+# Verify phase implementation
+python scripts/verify_fase_a1.py
+python scripts/verify_fase_c2.py
+
+# Start MCP server (example)
+python -m src.mcp_servers.market_data
+
+# Run backtest
+python scripts/backtest.py --strategy etf_momentum --start 2023-01-01
+```
+
+---
+
+## 17. Common Pitfalls to Avoid
+
+1. **Creating DB connections in tools** → Use pooled engine from BaseMCPServer
+2. **Using datetime.utcnow()** → Use datetime.now(timezone.utc)
+3. **Leaving TODO stubs** → Implement fully or raise NotImplementedError
+4. **Bare except clauses** → Catch specific exceptions
+5. **Hardcoded values in multiple files** → Use src/core/constants.py
+6. **Skipping verification scripts** → Always run verify_fase_*.py
+7. **Ignoring risk limits** → These are NON-NEGOTIABLE
+8. **Testing on live before paper** → 30 days paper trading MINIMUM
+9. **Intraday before swing validation** → 50 trades + Sharpe > 0.5 first
+10. **Forgetting timezone info** → All datetimes must be timezone-aware
+11. **Using Yahoo as primary** → IBKR is PRIMARY, Yahoo is fallback
+12. **Ignoring nuevo_enfoque docs** → These are the CURRENT implementation guides
+
+---
+
+## 18. AI Assistant Checklist
+
+Before implementing any feature:
+- [ ] Read relevant `docs/nuevo_enfoque/fase_*.md` document
+- [ ] Check `nexus_trading_new_concept.md` for context
+- [ ] Verify against risk limits
+- [ ] Check if similar code exists (DRY)
+- [ ] Plan tests before coding
+
+During implementation:
+- [ ] Type hints on all functions
+- [ ] Docstrings on public APIs
+- [ ] No hardcoded values (use constants)
+- [ ] Proper error handling
+- [ ] Logging at appropriate levels
+- [ ] Follow interface definitions from nuevo_enfoque docs
+
+After implementation:
+- [ ] Run verification script
+- [ ] Tests pass with >80% coverage
+- [ ] No linting errors
+- [ ] Code formatted with black/isort
+
+---
+
+## 19. Metrics to Capture (For Every Trade)
+
+```python
+trade_record = {
+    "trade_id": "uuid",
+    "timestamp": "ISO datetime",
+    "strategy_id": "etf_momentum",      # Which strategy
+    "model_id": "hmm_v1",               # Which regime model
+    "agent_id": "claude_moderate",      # If AI Agent
+    "symbol": "VWCE.DE",
+    "direction": "LONG",
+    "entry_price": 100.50,
+    "exit_price": 103.20,
+    "pnl_eur": 67.16,
+    "pnl_pct": 2.68,
+    "holding_hours": 72,
+    "regime_at_entry": "BULL",
+    "regime_confidence": 0.78,
+    "reasoning": "..."                  # If AI Agent
+}
+```
+
+This enables comparison across: strategy, model, regime, period, market.
+
+---
+
+*End of Guidelines*

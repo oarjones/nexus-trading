@@ -49,3 +49,9 @@ ibkr:
   paper_only: true              # CRITICAL: Only allow paper trading
   max_order_value: 10000        # Max single order value (USD)
   retry_interval: 300           # Retry connection every 5 min
+
+# ML Models Server (Port 3005)
+ml-models:
+  port: 3005
+  models:
+    active: "rules"  # hmm, rules, ppo

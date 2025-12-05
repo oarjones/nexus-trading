@@ -1,0 +1,130 @@
+# ============================================================================
+# CONFIGURACIÓN DE FUENTES DE DATOS - NEXUS TRADING
+# ============================================================================
+# Este archivo define las fuentes de datos disponibles y su prioridad.
+# La configuración aquí puede ser sobrescrita por la tabla config.data_sources
+# ============================================================================
+
+# Fuente principal
+primary: ibkr
+
+# Fuente de fallback (si principal falla)
+fallback: yahoo
+
+# Comportamiento global
+global:
+  # Reintentos antes de usar fallback
+  retry_count: 3
+  retry_delay_seconds: 2
+  
+  # Timeout global para requests
+  request_timeout_seconds: 30
+  
+  # Umbral de fallos consecutivos para marcar fuente como unhealthy
+  unhealthy_threshold: 5
+  
+  # Tiempo para reintentar fuente unhealthy (segundos)
+  recovery_check_interval: 300
+
+# Configuración específica por fuente
+sources:
+  # ─────────────────────────────────────────────────────────────────────────
+  # IBKR - Interactive Brokers (PRINCIPAL)
+  # ─────────────────────────────────────────────────────────────────────────
+  ibkr:
+    enabled: true
+    priority: 10  # Menor número = mayor prioridad
+    
+    connection:
+      host: "127.0.0.1"
+      port: 7497              # 7497 = paper trading, 7496 = live
+      client_id: 1            # ID único para este cliente
+      timeout_seconds: 30
+    
+    data:
+      delayed_data_ok: true   # Aceptamos datos con 15 min delay en paper
+      bar_sizes:              # Tamaños de barra soportados
+        - "1 min"
+        - "5 mins"
+        - "15 mins"
+        - "1 hour"
+        - "1 day"
+      max_duration: "1 Y"     # Máximo histórico en una request
+    
+    capabilities:
+      supports_realtime: true
+      supports_historical: true
+      supports_intraday: true
+      supports_options: true
+      supports_forex: true
+    
+    rate_limiting:
+      max_requests_per_second: 50
+      max_historical_requests_per_10min: 60
+  
+  # ─────────────────────────────────────────────────────────────────────────
+  # YAHOO FINANCE (FALLBACK)
+  # ─────────────────────────────────────────────────────────────────────────
+  yahoo:
+    enabled: true
+    priority: 20
+    
+    connection:
+      rate_limit_seconds: 0.5   # Delay entre requests para evitar ban
+      max_retries: 3
+      retry_delay_seconds: 5
+    
+    data:
+      intervals:                # Intervalos soportados
+        - "1m"
+        - "5m"
+        - "15m"
+        - "1h"
+        - "1d"
+        - "1wk"
+        - "1mo"
+      max_period: "5y"          # Máximo histórico
+    
+    capabilities:
+      supports_realtime: false   # Solo delayed
+      supports_historical: true
+      supports_intraday: false   # Solo con limitaciones
+      supports_options: true
+      supports_forex: true
+    
+    rate_limiting:
+      max_requests_per_minute: 60
+      batch_size: 10            # Símbolos por request en batch
+  
+  # ─────────────────────────────────────────────────────────────────────────
+  # KRAKEN (CRYPTO)
+  # ─────────────────────────────────────────────────────────────────────────
+  kraken:
+    enabled: false  # Habilitar cuando se implemente crypto
+    priority: 30
+    
+    connection:
+      api_key_env: "KRAKEN_API_KEY"
+      api_secret_env: "KRAKEN_API_SECRET"
+    
+    capabilities:
+      supports_realtime: true
+      supports_historical: true
+      supports_intraday: true
+
+# ─────────────────────────────────────────────────────────────────────────
+# MAPPING DE SÍMBOLOS
+# ─────────────────────────────────────────────────────────────────────────
+# Algunos símbolos tienen formato diferente según la fuente
+symbol_mapping:
+  # Símbolo interno -> { fuente: símbolo_específico }
+  "EURUSD":
+    ibkr: "EUR.USD"
+    yahoo: "EURUSD=X"
+  "GBPUSD":
+    ibkr: "GBP.USD"
+    yahoo: "GBPUSD=X"
+  "BTC-EUR":
+    ibkr: null        # No disponible en IBKR
+    yahoo: "BTC-EUR"
+    kraken: "XXBTZEUR"

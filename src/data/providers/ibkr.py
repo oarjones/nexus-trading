@@ -1,5 +1,5 @@
 """
-Interactive Brokers (IBKR) Data Provider
+Interactive Brokers (IBKR) Data Provider - Fase A1.3
 
 Provides real-time quotes and historical data from Interactive Brokers
 using the ib_insync library. Requires TWS or IB Gateway running.
@@ -32,6 +32,7 @@ class IBKRProvider:
     - Historical bars download
     - Connection health monitoring
     - Paper trading verification (safety check)
+    - Automatic reconnection logic
     
     Attributes:
         host: IBKR Gateway/TWS host (default: 127.0.0.1)
@@ -50,7 +51,8 @@ class IBKRProvider:
         host: str = '127.0.0.1',
         port: int = 7497,
         client_id: int = 1,
-        timeout: int = 10
+        timeout: int = 10,
+        max_retries: int = 3
     ):
         """
         Initialize IBKR provider.
@@ -60,11 +62,13 @@ class IBKRProvider:
             port: TWS/Gateway port (7497=paper, 7496=live)
             client_id: Unique client identifier
             timeout: Connection timeout in seconds
+            max_retries: Maximum connection retries
         """
         self.host = host
         self.port = port
         self.client_id = client_id
         self.timeout = timeout
+        self.max_retries = max_retries
         
         self.ib = IB()
         self.connected = False
@@ -76,7 +80,7 @@ class IBKRProvider:
     
     async def connect(self) -> bool:
         """
-        Connect to TWS or IB Gateway.
+        Connect to TWS or IB Gateway with retry logic.
         
         Returns:
             True if connection successful, False otherwise
@@ -84,41 +88,52 @@ class IBKRProvider:
         Raises:
             ConnectionError: If connection fails after retries
         """
-        try:
-            logger.info(f"Connecting to IBKR at {self.host}:{self.port}...")
-            
-            await self.ib.connectAsync(
-                self.host,
-                self.port,
-                clientId=self.client_id,
-                timeout=self.timeout
-            )
-            
-            self.connected = True
-            
-            # Verify paper trading (safety check)
-            if self.port == self.LIVE_TRADING_PORT:
-                logger.warning("⚠️  CONNECTED TO LIVE TRADING ACCOUNT!")
-            else:
-                logger.info("✓ Connected to paper trading account")
-            
-            # Get account info
-            accounts = self.ib.managedAccounts()
-            logger.info(f"Connected accounts: {accounts}")
-            
-            return True
-            
-        except Exception as e:
-            logger.error(f"Failed to connect to IBKR: {e}")
-            self.connected = False
-            raise ConnectionError(f"IBKR connection failed: {e}") from e
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                logger.info(f"Connecting to IBKR at {self.host}:{self.port} (Attempt {attempt}/{self.max_retries})...")
+                
+                await self.ib.connectAsync(
+                    self.host,
+                    self.port,
+                    clientId=self.client_id,
+                    timeout=self.timeout
+                )
+                
+                self.connected = True
+                
+                # Verify paper trading (safety check)
+                if self.port == self.LIVE_TRADING_PORT:
+                    logger.warning("⚠️  CONNECTED TO LIVE TRADING ACCOUNT!")
+                else:
+                    logger.info("✓ Connected to paper trading account")
+                
+                # Get account info
+                # accounts = self.ib.managedAccounts()
+                # logger.info(f"Connected accounts: {accounts}")
+                
+                return True
+                
+            except Exception as e:
+                logger.warning(f"Connection attempt {attempt} failed: {e}")
+                if attempt < self.max_retries:
+                    await asyncio.sleep(2)  # Wait before retry
+                else:
+                    logger.error(f"Failed to connect to IBKR after {self.max_retries} attempts")
+                    self.connected = False
+                    # Don't raise here, just return False to allow fallback
+                    return False
+        return False
     
     def disconnect(self):
         """Disconnect from IBKR."""
         if self.connected:
-            self.ib.disconnect()
-            self.connected = False
-            logger.info("Disconnected from IBKR")
+            try:
+                self.ib.disconnect()
+            except Exception as e:
+                logger.warning(f"Error disconnecting from IBKR: {e}")
+            finally:
+                self.connected = False
+                logger.info("Disconnected from IBKR")
     
     def _create_contract(self, symbol: str, exchange: str = 'SMART') -> Contract:
         """
@@ -131,6 +146,11 @@ class IBKRProvider:
         Returns:
             Contract object
         """
+        # Handle special cases if needed (e.g. forex)
+        if len(symbol) == 7 and symbol[3] == '.': # e.g. EUR.USD
+             # Forex logic could go here, for now assuming Stock
+             pass
+             
         contract = Stock(symbol, exchange, 'USD')
         return contract
     
@@ -150,7 +170,9 @@ class IBKRProvider:
             ConnectionError: If not connected to IBKR
         """
         if not self.connected:
-            raise ConnectionError("Not connected to IBKR. Call connect() first.")
+            # Try auto-reconnect
+            if not await self.connect():
+                raise ConnectionError("Not connected to IBKR. Call connect() first.")
         
         try:
             contract = self._create_contract(symbol, exchange)
@@ -158,8 +180,13 @@ class IBKRProvider:
             # Request market data
             self.ib.reqMktData(contract, '', False, False)
             
-            # Wait for data (max 5 seconds)
-            await asyncio.sleep(2)
+            # Wait for data (max 2 seconds)
+            start_time = datetime.now()
+            while (datetime.now() - start_time).total_seconds() < 2:
+                await asyncio.sleep(0.1)
+                ticker = self.ib.ticker(contract)
+                if ticker.bid and ticker.ask: # We have some data
+                    break
             
             # Get ticker data
             ticker = self.ib.ticker(contract)
@@ -168,11 +195,20 @@ class IBKRProvider:
             self.ib.cancelMktData(contract)
             
             if ticker:
+                # Handle potential NaNs
+                bid = float(ticker.bid) if ticker.bid == ticker.bid else None
+                ask = float(ticker.ask) if ticker.ask == ticker.ask else None
+                last = float(ticker.last) if ticker.last == ticker.last else None
+                
+                # If last is missing, try to use mid point
+                if last is None and bid is not None and ask is not None:
+                    last = (bid + ask) / 2
+                
                 quote = {
                     'symbol': symbol,
-                    'bid': float(ticker.bid) if ticker.bid == ticker.bid else None,  # Check for NaN
-                    'ask': float(ticker.ask) if ticker.ask == ticker.ask else None,
-                    'last': float(ticker.last) if ticker.last == ticker.last else None,
+                    'bid': bid,
+                    'ask': ask,
+                    'last': last,
                     'volume': int(ticker.volume) if ticker.volume == ticker.volume else 0,
                     'timestamp': datetime.now(timezone.utc).isoformat()
                 }
@@ -212,7 +248,9 @@ class IBKRProvider:
             ConnectionError: If not connected to IBKR
         """
         if not self.connected:
-            raise ConnectionError("Not connected to IBKR. Call connect() first.")
+             # Try auto-reconnect
+            if not await self.connect():
+                raise ConnectionError("Not connected to IBKR. Call connect() first.")
         
         try:
             contract = self._create_contract(symbol, exchange)
@@ -242,6 +280,10 @@ class IBKRProvider:
             # Convert to DataFrame
             df = util.df(bars)
             
+            if df is None or df.empty:
+                 logger.warning(f"Empty DataFrame returned for {symbol}")
+                 return pd.DataFrame()
+
             # Standardize format
             standardized = pd.DataFrame()
             standardized['time'] = pd.to_datetime(df['date'])
@@ -297,7 +339,8 @@ class IBKRProvider:
             ConnectionError: If not connected
         """
         if not self.connected:
-            raise ConnectionError("Not connected to IBKR. Call connect() first.")
+            if not await self.connect():
+                raise ConnectionError("Not connected to IBKR. Call connect() first.")
         
         try:
             # Request account summary
@@ -319,6 +362,15 @@ class IBKRProvider:
         """Check if currently connected to IBKR."""
         return self.connected and self.ib.isConnected()
     
+    @property
+    def name(self) -> str:
+        """Provider name."""
+        return "ibkr"
+        
+    def is_available(self) -> bool:
+        """Check if provider is available (connected)."""
+        return self.is_connected()
+
     async def __aenter__(self):
         """Async context manager entry."""
         await self.connect()
