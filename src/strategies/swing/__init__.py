@@ -1,0 +1,3 @@
+"""
+Swing trading strategies.
+"""
