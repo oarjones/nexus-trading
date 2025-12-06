@@ -1,0 +1,53 @@
+# Configuración del Sistema de Métricas
+# config/metrics.yaml
+
+metrics:
+  # Collector settings
+  collector:
+    redis_channel: "trades"
+    batch_size: 10
+    flush_interval_seconds: 5
+    enrich_with_regime: true
+    enrich_with_indicators: true
+  
+  # Aggregator settings
+  aggregator:
+    # Períodos de agregación
+    periods:
+      - type: "hourly"
+        retention_days: 7
+      - type: "daily"
+        retention_days: 90
+      - type: "weekly"
+        retention_days: 365
+      - type: "monthly"
+        retention_days: 1825          # 5 años
+      - type: "all_time"
+        retention_days: null          # Sin límite
+    
+    # Frecuencia de actualización
+    update_frequency_seconds: 300     # Cada 5 minutos
+    
+    # Métricas a calcular
+    calculate:
+      - sharpe_ratio
+      - sortino_ratio
+      - max_drawdown
+      - win_rate
+      - profit_factor
+      - avg_r_multiple
+  
+  # Calculators settings
+  calculators:
+    risk_free_rate: 0.03              # 3% anual (EUR)
+    trading_days_per_year: 252
+    min_trades_for_metrics: 5
+  
+  # Exporters
+  exporters:
+    postgres:
+      enabled: true
+    prometheus:
+      enabled: true
+      port: 8000
+      path: "/metrics"
