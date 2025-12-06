@@ -149,6 +149,32 @@ class StrategyRegistry:
         return active
     
     @classmethod
+    def get_by_type(
+        cls, 
+        strategy_type: str,
+        strategies_config: dict = None
+    ) -> list[TradingStrategy]:
+        """
+        Obtener estrategias por tipo (swing, intraday).
+        """
+        filtered = []
+        config = strategies_config or cls._config
+        
+        for strategy_id in cls._registry.keys():
+            strategy_conf = config.get("strategies", {}).get(strategy_id, {})
+            
+            # Instanciar
+            strategy = cls.get(strategy_id, strategy_conf)
+            if strategy is None:
+                continue
+                
+            # Verificar tipo (asumiendo que la estrategia tiene propiedad strategy_type)
+            if hasattr(strategy, "strategy_type") and strategy.strategy_type == strategy_type:
+                filtered.append(strategy)
+                
+        return filtered
+    
+    @classmethod
     def set_config(cls, config: dict) -> None:
         """
         Establecer configuración global de estrategias.

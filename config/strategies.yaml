@@ -56,22 +56,38 @@ strategies:
       min_risk_reward: 1.5
       max_positions: 5
 
-  # Mean Reversion - Intraday (Futuro - Fase C2)
-  mean_reversion:
+  # Mean Reversion - Intraday (Fase C2)
+  mean_reversion_intraday:
     enabled: false
-    description: "Mean reversion intradía"
+    description: "Mean reversion intradía en mercados laterales"
+    
+    timeframe: "5min"
+    market: "US"
     
     required_regime:
       - SIDEWAYS
     
-    # Configuración placeholder
-    entry:
-      zscore_threshold: -2.0
-      rsi_low: 25
+    limits:
+      max_trades_per_day: 5
+      max_exposure_pct: 0.15
+      force_close_minutes_before: 10
+
+  # Volatility Breakout - Intraday (Fase C2)
+  volatility_breakout:
+    enabled: false
+    description: "Ruptura de volatilidad intradía"
     
-    exit:
-      zscore_target: 0.0
-      max_holding_hours: 8
+    timeframe: "1min"
+    market: "US"
+    
+    required_regime:
+      - VOLATILE
+      - BULL
+    
+    limits:
+      max_trades_per_day: 3
+      max_exposure_pct: 0.10
+      force_close_minutes_before: 15
 
   # AI Agent Swing (Fase B2)
   ai_agent_swing:
