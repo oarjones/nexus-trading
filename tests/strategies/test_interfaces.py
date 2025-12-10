@@ -1,7 +1,7 @@
 """Tests para interfaces y dataclasses de estrategias."""
 
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from src.strategies.interfaces import (
     Signal,
     SignalDirection,
@@ -91,7 +91,7 @@ class TestSignal:
             symbol="SPY",
             direction=SignalDirection.HOLD,
             confidence=0.50,
-            expires_at=datetime.utcnow() - timedelta(hours=1),
+            expires_at=datetime.now(timezone.utc) - timedelta(hours=1),
         )
         assert signal.is_expired() is True
         
@@ -101,7 +101,7 @@ class TestSignal:
             symbol="SPY",
             direction=SignalDirection.HOLD,
             confidence=0.50,
-            expires_at=datetime.utcnow() + timedelta(hours=1),
+            expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
         )
         assert signal2.is_expired() is False
     

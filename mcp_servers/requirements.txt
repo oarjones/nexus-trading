@@ -10,6 +10,8 @@ mcp[cli]>=1.8.0,<2.0.0
 httpx>=0.25.0          # HTTP client for inter-server communication
 pydantic>=2.5.0        # Already in main, but listing for clarity
 scipy>=1.11.0          # For technical analysis (S/R levels)
+fastapi>=0.109.0       # For HTTP transport
+uvicorn>=0.27.0        # ASGI server for HTTP transport
 
 # Note: Database (psycopg2-binary, SQLAlchemy) and Redis dependencies
 # are inherited from main project requirements.txt

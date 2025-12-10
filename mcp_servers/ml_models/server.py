@@ -10,8 +10,8 @@ Exposes tools for:
 
 import asyncio
 import logging
-import json
-from pathlib import Path
+import os
+from typing import Dict, Any
 
 # Configure logging
 logging.basicConfig(
@@ -20,128 +20,97 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Add parent directory to path to import common
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent))
+
+try:
+    from common.base_server import BaseMCPServer
+except ImportError:
+    # Fallback for relative run
+    sys.path.append(str(Path(__file__).parent.parent.parent))
+    from mcp_servers.common.base_server import BaseMCPServer
+
 # Tool imports
 from tools.regime import handle_get_regime, get_regime_tool
 from tools.model_info import handle_get_model_info, handle_list_models
 from tools.health import handle_health_check
 
 
-# MCP Tools Definition
-TOOLS = [
-    {
-        "name": "get_regime",
-        "description": "Get current market regime (BULL, BEAR, SIDEWAYS, VOLATILE)",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "features": {
-                    "type": "object",
-                    "description": "Prediction features {name: value}. If not provided, uses current values.",
-                    "additionalProperties": {"type": "number"}
-                },
-                "symbol": {
-                    "type": "string",
-                    "description": "Specific symbol (optional)"
-                },
-                "model_type": {
-                    "type": "string",
-                    "enum": ["hmm", "rules"],
-                    "description": "Model type to use (optional, default: active)"
-                },
-                "use_cache": {
-                    "type": "boolean",
-                    "description": "Whether to use prediction cache (default: true)"
+class MLModelsServer(BaseMCPServer):
+    """MCP Server for ML Models."""
+    
+    def __init__(self, config_path: str = None):
+        super().__init__("ml-models", config_path)
+        self._register_tools()
+        
+    def _register_tools(self):
+        """Register all ML tools."""
+        
+        # 1. get_regime
+        self.register_tool(
+            "get_regime",
+            "Get current market regime (BULL, BEAR, SIDEWAYS, VOLATILE)",
+            {
+                "type": "object",
+                "properties": {
+                    "symbol": {"type": "string"},
+                    "model_type": {"type": "string", "enum": ["hmm", "rules"]},
+                    "use_cache": {"type": "boolean"}
                 }
-            }
-        }
-    },
-    {
-        "name": "get_model_info",
-        "description": "Get information about active or specified ML model",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "model_type": {
-                    "type": "string",
-                    "enum": ["hmm", "rules"],
-                    "description": "Model type (optional)"
+            },
+            handle_get_regime
+        )
+        
+        # 2. get_model_info
+        self.register_tool(
+            "get_model_info",
+            "Get information about active or specified ML model",
+            {
+                "type": "object",
+                "properties": {
+                    "model_type": {"type": "string", "enum": ["hmm", "rules"]}
                 }
-            }
-        }
-    },
-    {
-        "name": "list_models",
-        "description": "List available ML models",
-        "inputSchema": {
-            "type": "object",
-            "properties": {}
-        }
-    },
-    {
-        "name": "clear_cache",
-        "description": "Clear prediction cache",
-        "inputSchema": {
-            "type": "object",
-            "properties": {}
-        }
-    },
-    {
-        "name": "health_check",
-        "description": "Check ML server status",
-        "inputSchema": {
-            "type": "object",
-            "properties": {}
-        }
-    }
-]
+            },
+            handle_get_model_info
+        )
+        
+        # 3. list_models
+        self.register_tool(
+            "list_models",
+            "List available ML models",
+            {"type": "object", "properties": {}},
+            handle_list_models
+        )
+        
+        # 4. clear_cache
+        self.register_tool(
+            "clear_cache",
+            "Clear prediction cache",
+            {"type": "object", "properties": {}},
+            self.clear_cache_wrapper
+        )
+        
+        # 5. health_check
+        self.register_tool(
+            "health_check",
+            "Check ML server status",
+            {"type": "object", "properties": {}},
+            handle_health_check
+        )
 
-
-async def handle_tool_call(name: str, args: dict) -> dict:
-    """
-    Dispatcher for tool calls.
-    
-    Args:
-        name: Tool name
-        args: Tool arguments
-    
-    Returns:
-        Tool result
-    """
-    handlers = {
-        "get_regime": handle_get_regime,
-        "get_model_info": handle_get_model_info,
-        "list_models": handle_list_models,
-        "clear_cache": lambda _: {"cleared": get_regime_tool().clear_cache()},
-        "health_check": handle_health_check,
-    }
-    
-    handler = handlers.get(name)
-    if not handler:
-        return {"error": f"Unknown tool: {name}"}
-    
-    return await handler(args)
-
+    async def clear_cache_wrapper(self, args: dict) -> dict:
+        """Wrapper for clear_cache to match async signature."""
+        return {"cleared": get_regime_tool().clear_cache()}
 
 async def main():
     """MCP Server Entry Point."""
-    logger.info("Starting mcp-ml-models server...")
+    # Determine config path
+    config_path = os.getenv("MCP_CONFIG_PATH", "config/mcp-servers.yaml")
     
-    # In production, this would integrate with MCP SDK
-    # For now, standalone test mode
-    
-    print(json.dumps({
-        "status": "ready",
-        "tools": [t["name"] for t in TOOLS],
-        "version": "1.0.0"
-    }))
-    
-    # Keep server running
-    try:
-        while True:
-            await asyncio.sleep(1)
-    except KeyboardInterrupt:
-        logger.info("Server stopped")
-
+    server = MLModelsServer(config_path)
+    await server.run()
 
 if __name__ == "__main__":
     asyncio.run(main())

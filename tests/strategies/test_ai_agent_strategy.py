@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, AsyncMock, patch
 
 from src.strategies.swing.ai_agent_strategy import AIAgentStrategy
 from src.agents.llm.interfaces import AgentDecision, MarketView, AutonomyLevel
-from src.strategies.interfaces import Signal
+from src.strategies.interfaces import Signal, SignalDirection, MarketRegime
 
 
 @pytest.fixture
@@ -16,6 +16,8 @@ def mock_dependencies():
         # Mock Agent
         agent_mock = AsyncMock()
         factory_mock.create_from_config.return_value = agent_mock
+        factory_mock.create_from_config_object.return_value = agent_mock
+        factory_mock.create.return_value = agent_mock
         
         # Mock Builder
         builder_instance = AsyncMock()
@@ -35,35 +37,32 @@ async def test_generate_signals_success(mock_dependencies):
     mock_signal = Signal(
         strategy_id="ai_agent_moderate",
         symbol="AAPL",
-        direction="LONG",
+        direction=SignalDirection.LONG, # Use Enum
         confidence=0.9,
         entry_price=150.0,
         stop_loss=145.0,
         take_profit=160.0,
-        regime_at_signal="BULL",
+        regime_at_signal=MarketRegime.BULL, # Use Enum
         reasoning="Test"
     )
     
     mock_decision = AgentDecision(
         decision_id="dec_1",
-        context_id="ctx_1",
         timestamp=MagicMock(),
-        actions=[mock_signal],
+        signals=[mock_signal], # Renamed from actions
         market_view=MarketView.BULLISH,
         reasoning="Test",
-        key_factors=[],
         confidence=0.9,
         model_used="test",
-        autonomy_level=AutonomyLevel.MODERATE,
         tokens_used=100,
-        latency_ms=100
+        execution_time_ms=100 # Renamed from latency_ms
     )
     agent_mock.decide.return_value = mock_decision
     
     # Init strategy
+    # Fix: AIAgentStrategy takes config, not mcp_client directly
     strategy = AIAgentStrategy(
-        mcp_client=MagicMock(),
-        symbols=["AAPL"]
+        config={"symbols": ["AAPL"]}
     )
     
     # Run
@@ -87,8 +86,7 @@ async def test_generate_signals_error(mock_dependencies):
     builder_instance.build.side_effect = Exception("Build error")
     
     strategy = AIAgentStrategy(
-        mcp_client=MagicMock(),
-        symbols=["AAPL"]
+        config={"symbols": ["AAPL"]}
     )
     
     signals = await strategy.generate_signals(MagicMock())

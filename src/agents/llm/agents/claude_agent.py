@@ -80,6 +80,21 @@ class ClaudeAgent(LLMAgent):
         """
         start_time = time.time()
         
+        # 0. Chequeo de seguridad: No operar en régimen VOLATILE a menos que EXPERIMENTAL
+        if context.regime.regime == "VOLATILE" and context.autonomy_level != AutonomyLevel.EXPERIMENTAL:
+            logger.info("Skipping Claude call due to VOLATILE regime")
+            return AgentDecision(
+                decision_id=f"dec_skip_{int(time.time())}",
+                timestamp=datetime.now(timezone.utc),
+                market_view=MarketView.UNCERTAIN,
+                confidence=0.0,
+                reasoning="Market regime is VOLATILE. Trading skipped for safety.",
+                signals=[],
+                model_used=self._model,
+                tokens_used=0,
+                execution_time_ms=0
+            )
+        
         # 1. Seleccionar Prompt según autonomía
         system_prompt = self._get_system_prompt(context.autonomy_level)
         
@@ -141,21 +156,33 @@ class ClaudeAgent(LLMAgent):
     
     def _extract_json(self, text: str) -> dict:
         """Extrae y parsea JSON de la respuesta."""
-        try:
-            # Intentar parseo directo
-            return json.loads(text)
-        except json.JSONDecodeError:
-            # Buscar bloque json ```json ... ```
-            import re
-            match = re.search(r"```json\s*(.*?)\s*```", text, re.DOTALL)
-            if match:
-                return json.loads(match.group(1))
-            # Buscar primer { y último }
-            start = text.find("{")
-            end = text.rfind("}")
-            if start != -1 and end != -1:
-                return json.loads(text[start:end+1])
-            raise ValueError("No valid JSON found in response")
+        text = text.strip()
+        
+        def try_parse(s):
+            try:
+                return json.loads(s, strict=False)
+            except json.JSONDecodeError:
+                return None
+
+        # 1. Intentar parseo directo
+        res = try_parse(text)
+        if res: return res
+
+        # 2. Buscar bloque json ```json ... ```
+        import re
+        match = re.search(r"```json\s*(.*?)\s*```", text, re.DOTALL)
+        if match:
+            res = try_parse(match.group(1))
+            if res: return res
+
+        # 3. Buscar primer { y último }
+        start = text.find("{")
+        end = text.rfind("}")
+        if start != -1 and end != -1:
+            res = try_parse(text[start:end+1])
+            if res: return res
+            
+        raise ValueError(f"No valid JSON found in response. Content start: {text[:50]}...")
             
     def _create_decision(
         self, 

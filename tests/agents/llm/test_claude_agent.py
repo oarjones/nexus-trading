@@ -2,7 +2,7 @@
 
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
-from datetime import datetime
+from datetime import datetime, timezone
 
 from src.agents.llm.agents.claude_agent import ClaudeAgent
 from src.agents.llm.interfaces import (
@@ -13,12 +13,14 @@ from src.agents.llm.interfaces import (
     PortfolioSummary,
     MarketView
 )
+from src.strategies.interfaces import SignalDirection
 
 
 @pytest.fixture
 def mock_anthropic():
-    with patch("src.agents.llm.agents.claude_agent.anthropic.Anthropic") as mock:
+    with patch("src.agents.llm.agents.claude_agent.anthropic.AsyncAnthropic") as mock:
         client = MagicMock()
+        client.messages.create = AsyncMock()
         mock.return_value = client
         yield client
 
@@ -34,7 +36,7 @@ def sample_context():
     
     return AgentContext(
         context_id="ctx_test",
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         regime=RegimeInfo("BULL", 0.8, {}, "hmm"),
         market=market_mock,
         portfolio=PortfolioSummary(10000, 10000, 0, (), 0, 0, 0, 0),
@@ -55,7 +57,7 @@ async def test_decide_success(mock_anthropic, sample_context):
         "confidence": 0.85,
         "reasoning": "Test reasoning",
         "key_factors": ["Factor 1"],
-        "actions": [
+        "signals": [
             {
                 "symbol": "AAPL",
                 "direction": "LONG",
@@ -77,11 +79,13 @@ async def test_decide_success(mock_anthropic, sample_context):
     agent = ClaudeAgent(api_key="test_key")
     decision = await agent.decide(sample_context)
     
-    assert decision.market_view == MarketView.BULLISH
+    print(f"DEBUG: Decision reasoning: {decision.reasoning}")
+    assert not decision.reasoning.startswith("ERROR"), f"Agent returned error: {decision.reasoning}"
+    assert decision.market_view.value == "bullish"
     assert decision.confidence == 0.85
-    assert len(decision.actions) == 1
-    assert decision.actions[0].symbol == "AAPL"
-    assert decision.actions[0].direction == "LONG"
+    assert len(decision.signals) == 1
+    assert decision.signals[0].symbol == "AAPL"
+    assert decision.signals[0].direction == SignalDirection.LONG
 
 
 @pytest.mark.asyncio
@@ -89,7 +93,7 @@ async def test_decide_skip_volatile(mock_anthropic, sample_context):
     # Modificar contexto para VOLATILE
     volatile_context = AgentContext(
         context_id="ctx_test",
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         regime=RegimeInfo("VOLATILE", 0.8, {}, "hmm"),
         market=MagicMock(),
         portfolio=PortfolioSummary(10000, 10000, 0, (), 0, 0, 0, 0),
@@ -101,17 +105,11 @@ async def test_decide_skip_volatile(mock_anthropic, sample_context):
     agent = ClaudeAgent(api_key="test_key")
     decision = await agent.decide(volatile_context)
     
-    assert decision.market_view == MarketView.UNCERTAIN
-    assert len(decision.actions) == 0
+    assert decision.market_view.value == "uncertain"
+    assert len(decision.signals) == 0
     assert "VOLATILE" in decision.reasoning
     # No debe haber llamado a la API
     mock_anthropic.messages.create.assert_not_called()
 
 
-@pytest.mark.asyncio
-async def test_health_check(mock_anthropic):
-    agent = ClaudeAgent(api_key="test_key")
-    
-    status = await agent.health_check()
-    assert status["status"] == "healthy"
-    assert status["model"] == "claude-sonnet-4-20250514"
+

@@ -48,7 +48,7 @@ async def get_positions_tool(args: Dict[str, Any], ibkr_conn: IBKRConnection) ->
         ib = await ibkr_conn.ensure_connected()
         
         # Get positions
-        positions = await ib.positionsAsync()
+        positions = ib.positions()
         
         positions_list = []
         total_value = 0.0

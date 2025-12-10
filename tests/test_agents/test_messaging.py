@@ -32,12 +32,108 @@ def redis_url():
     return "redis://localhost:6379/0"
 
 
+class MockPubSub:
+    def __init__(self, channels, messages):
+        self.channels = channels
+        self.messages = messages  # Shared list of (channel, message)
+        self.subscribed = set()
+
+    def subscribe(self, channel):
+        self.subscribed.add(channel)
+
+    def unsubscribe(self, channel):
+        if channel in self.subscribed:
+            self.subscribed.remove(channel)
+
+    def get_message(self, timeout=0.1):
+        # Check shared messages
+        if not self.messages:
+            return None
+            
+        # Get first message
+        channel, data = self.messages[0]
+        
+        # If subscribed to this channel
+        if channel in self.subscribed:
+            self.messages.pop(0)  # Remove it
+            return {
+                'type': 'message',
+                'channel': channel,
+                'data': data
+            }
+        
+        # If not subscribed but message exists, maybe another pubsub handles it?
+        # For simplicity in tests, we assume single consumer or we handle it in MockRedis
+        return None
+
+    def close(self):
+        pass
+
+class MockRedis:
+    def __init__(self):
+        self.messages = []  # List of (channel, data) shared among pubsubs? 
+        # Actually each pubsub should receive messages.
+        # Simple approach: Global list of messages, and pubsub reads if subscribed.
+        # But restart/listen might miss previous messages. 
+        # Redis PubSub is fire and forget.
+        
+        # Better: MockRedis keeps list of PubSubs.
+        self.pubsubs = []
+
+    def pubsub(self):
+        ps = MockPubSubImpl(self)
+        self.pubsubs.append(ps)
+        return ps
+
+    def publish(self, channel, data):
+        count = 0
+        for ps in self.pubsubs:
+            if channel in ps.subscribed:
+                ps.queue.append({'type': 'message', 'channel': channel, 'data': data})
+                count += 1
+        return count
+
+    def ping(self):
+        return True
+
+    def close(self):
+        pass
+
+class MockPubSubImpl:
+    def __init__(self, redis_client):
+        self.client = redis_client
+        self.subscribed = set()
+        self.queue = []
+
+    def subscribe(self, channel):
+        self.subscribed.add(channel)
+
+    def unsubscribe(self, channel):
+        if channel in self.subscribed:
+            self.subscribed.remove(channel)
+
+    def get_message(self, timeout=0.1):
+        if self.queue:
+            return self.queue.pop(0)
+        time.sleep(timeout if timeout > 0 else 0) # Simulate wait
+        return None
+    
+    def close(self):
+        if self in self.client.pubsubs:
+            self.client.pubsubs.remove(self)
+
+
 @pytest.fixture
-async def message_bus(redis_url):
-    """Create a MessageBus instance for testing."""
-    bus = MessageBus(redis_url)
-    yield bus
-    bus.close()
+def mock_redis_client():
+    return MockRedis()
+
+@pytest.fixture
+def message_bus(redis_url, mock_redis_client):
+    """Create a MessageBus instance for testing with mocked Redis."""
+    with patch('redis.from_url', return_value=mock_redis_client):
+        bus = MessageBus(redis_url)
+        yield bus
+        bus.close()
 
 
 class TestMessageBusBasics:
@@ -45,11 +141,12 @@ class TestMessageBusBasics:
     
     def test_initialization(self, redis_url):
         """Test MessageBus can be initialized."""
-        bus = MessageBus(redis_url)
-        assert bus.redis_url == redis_url
-        assert bus._handlers == {}
-        assert bus._running is False
-        bus.close()
+        with patch('redis.from_url') as mock_redis:
+            bus = MessageBus(redis_url)
+            assert bus.redis_url == redis_url
+            assert bus._handlers == {}
+            assert bus._running is False
+            bus.close()
     
     def test_subscribe(self, message_bus):
         """Test subscribing to a channel."""
@@ -126,9 +223,10 @@ class TestMessagePubSub:
     """Test end-to-end pub/sub functionality."""
     
     @pytest.mark.asyncio
-    async def test_publish_and_receive(self, redis_url):
+    async def test_publish_and_receive(self, redis_url, mock_redis_client):
         """Test publishing and receiving a message."""
-        bus = MessageBus(redis_url)
+        with patch('redis.from_url', return_value=mock_redis_client):
+            bus = MessageBus(redis_url)
         
         received_messages = []
         
@@ -181,10 +279,11 @@ class TestMessagePubSub:
         assert received.reasoning == "test message"
     
     @pytest.mark.asyncio
-    async def test_multiple_subscribers(self, redis_url):
+    async def test_multiple_subscribers(self, redis_url, mock_redis_client):
         """Test multiple subscribers on same channel."""
-        bus1 = MessageBus(redis_url)
-        bus2 = MessageBus(redis_url)
+        with patch('redis.from_url', return_value=mock_redis_client):
+            bus1 = MessageBus(redis_url)
+            bus2 = MessageBus(redis_url)
         
         received1 = []
         received2 = []
@@ -238,9 +337,10 @@ class TestMessagePubSub:
         assert received2[0].symbol == "MULTI"
     
     @pytest.mark.asyncio
-    async def test_channel_isolation(self, redis_url):
+    async def test_channel_isolation(self, redis_url, mock_redis_client):
         """Test that messages only go to subscribed channels."""
-        bus = MessageBus(redis_url)
+        with patch('redis.from_url', return_value=mock_redis_client):
+            bus = MessageBus(redis_url)
         
         signals_messages = []
         decisions_messages = []
@@ -332,15 +432,19 @@ class TestErrorHandling:
     """Test error handling in MessageBus."""
     
     def test_publish_with_invalid_redis(self):
-        """Test publishing when Redis is unavailable."""
-        bus = MessageBus("redis://invalid:9999/0")
+        """Test publishing when Redis fails."""
+        mock_redis = Mock()
+        mock_redis.publish.side_effect = Exception("Connection error")
         
-        signal = TradingSignal(
-            from_agent="test",
-            symbol="TEST",
-            direction=Direction.LONG,
-            confidence=0.75,
-            entry_price=100.0,
+        with patch('redis.from_url', return_value=mock_redis):
+            bus = MessageBus("redis://invalid:9999/0")
+            
+            signal = TradingSignal(
+                from_agent="test",
+                symbol="TEST",
+                direction=Direction.LONG,
+                confidence=0.75,
+                entry_price=100.0,
             stop_loss=95.0,
             take_profit=110.0,
             timeframe="1d",
@@ -353,9 +457,10 @@ class TestErrorHandling:
             bus.publish("signals", signal)
     
     @pytest.mark.asyncio
-    async def test_handler_exception_doesnt_crash_bus(self, redis_url):
+    async def test_handler_exception_doesnt_crash_bus(self, redis_url, mock_redis_client):
         """Test that exception in handler doesn't crash the bus."""
-        bus = MessageBus(redis_url)
+        with patch('redis.from_url', return_value=mock_redis_client):
+            bus = MessageBus(redis_url)
         
         received_count = [0]
         

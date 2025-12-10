@@ -12,7 +12,7 @@ from __future__ import annotations
 import asyncio
 import time
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 import logging
 
@@ -126,7 +126,9 @@ class RateLimiter:
     
     def _check_daily_reset(self):
         """Verifica y ejecuta reset diario si corresponde."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
+        if self._daily_reset_time.tzinfo is None:
+             now = now.replace(tzinfo=None) # Fallback para compatibilidad
         if now >= self._daily_reset_time:
             logger.info(f"Daily reset: {self._daily_requests} requests used")
             self._daily_requests = 0
@@ -134,7 +136,7 @@ class RateLimiter:
     
     def _next_daily_reset(self) -> datetime:
         """Calcula próximo tiempo de reset (00:00 UTC)."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         tomorrow = now + timedelta(days=1)
         return tomorrow.replace(hour=0, minute=0, second=0, microsecond=0)
 

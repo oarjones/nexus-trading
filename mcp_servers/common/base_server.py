@@ -58,6 +58,7 @@ class BaseMCPServer:
         self.config = load_config(config_path) if config_path else {}
         self.server = Server(name)
         self.tools: Dict[str, Callable] = {}
+        self.tool_metadata: Dict[str, dict] = {}
         self.db_engine = None
         
         # Initialize database engine with pooling if URL provided
@@ -81,8 +82,8 @@ class BaseMCPServer:
             """List all registered tools."""
             tool_list = []
             for tool_name, handler in self.tools.items():
-                # Get tool metadata from handler
-                tool_info = getattr(handler, '_tool_info', {})
+                # Get tool metadata
+                tool_info = self.tool_metadata.get(tool_name, {})
                 tool_list.append(Tool(
                     name=tool_name,
                     description=tool_info.get('description', ''),
@@ -152,8 +153,8 @@ class BaseMCPServer:
             ...     self.get_quote
             ... )
         """
-        # Attach metadata to handler
-        handler._tool_info = {
+        # Store metadata in separate dict
+        self.tool_metadata[name] = {
             'description': description,
             'schema': schema
         }
@@ -161,23 +162,76 @@ class BaseMCPServer:
         self.tools[name] = handler
         logger.info(f"[{self.name}] Registered tool: {name}")
     
+    async def run_http(self, host: str = "0.0.0.0", port: int = 8000):
+        """Run as HTTP server using FastAPI."""
+        try:
+            import uvicorn
+            from fastapi import FastAPI, HTTPException, Body
+            from pydantic import BaseModel
+        except ImportError:
+            logger.error("FastAPI/Uvicorn not installed. Install with 'pip install fastapi uvicorn'")
+            raise
+
+        app = FastAPI(title=self.name)
+
+        @app.post("/tools/{name}")
+        async def call_tool(name: str, args: dict = Body(...)):
+            if name not in self.tools:
+                raise HTTPException(status_code=404, detail=f"Tool {name} not found")
+            try:
+                logger.debug(f"[{self.name}] HTTP Call tool: {name} args={args}")
+                result = await self.tools[name](args)
+                return result
+            except Exception as e:
+                logger.error(f"[{self.name}] Tool {name} failed: {e}", exc_info=True)
+                raise HTTPException(status_code=500, detail=str(e))
+
+        @app.get("/health")
+        async def health():
+            return {"status": "ok", "server": self.name}
+            
+        @app.get("/tools")
+        async def list_tools():
+            return self.get_tool_list()
+
+        logger.info(f"[{self.name}] Starting HTTP server on {host}:{port}")
+        config = uvicorn.Config(app, host=host, port=port, log_level="info")
+        server = uvicorn.Server(config)
+        await server.serve()
+
     async def run(self):
         """
-        Run the MCP server using stdio transport.
+        Run the MCP server.
         
-        This starts the server and listens for requests via stdin/stdout.
-        Blocks until server is stopped.
+        Checks MCP_TRANSPORT environment variable:
+        - 'http': Runs HTTP server (FastAPI)
+        - 'stdio' (default): Runs Stdio server (MCP SDK)
         """
-        logger.info(f"[{self.name}] Starting MCP server...")
+        import os
+        transport = os.getenv("MCP_TRANSPORT", "stdio").lower()
         
-        async with stdio_server() as (read_stream, write_stream):
-            await self.server.run(
-                read_stream,
-                write_stream,
-                self.server.create_initialization_options()
-            )
-        
-        logger.info(f"[{self.name}] Server stopped")
+        if transport == "http":
+            # Determine port from config or defaulting based on name pattern if needed
+            # But normally config should have it.
+            # We'll use the one in config if available.
+            port = self.config.get(self.name, {}).get("port", 8000)
+            host = self.config.get(self.name, {}).get("host", "0.0.0.0")
+            
+            # Allow env override
+            port = int(os.getenv("PORT", port))
+            
+            await self.run_http(host, port)
+        else:
+            logger.info(f"[{self.name}] Starting MCP server (STDIO)...")
+            
+            async with stdio_server() as (read_stream, write_stream):
+                await self.server.run(
+                    read_stream,
+                    write_stream,
+                    self.server.create_initialization_options()
+                )
+            
+            logger.info(f"[{self.name}] Server stopped")
     
     def get_tool_list(self) -> List[str]:
         """

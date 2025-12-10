@@ -9,7 +9,7 @@ Proporciona funcionalidad común:
 """
 
 from abc import abstractmethod
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 import logging
 
@@ -63,14 +63,47 @@ class BaseSwingStrategy(TradingStrategy):
         self.logger = logging.getLogger(f"strategy.{self.strategy_id}")
         self._signals_generated = 0
         self._positions_closed = 0
+        
+        # Símbolos dinámicos inyectados por UniverseManager
+        self._dynamic_symbols: list[str] | None = None
+    
+    def set_universe(self, symbols: list[str]) -> None:
+        """
+        Inyectar universo de símbolos dinámico.
+        
+        Llamado por StrategyRunner cuando usa UniverseManager.
+        Si se establece, override los símbolos hardcodeados.
+        
+        Args:
+            symbols: Lista de símbolos del universo activo
+        """
+        self._dynamic_symbols = symbols
+        self.logger.info(f"Universo dinámico establecido: {len(symbols)} símbolos")
+    
+    def clear_universe(self) -> None:
+        """Limpiar universo dinámico, volver a usar hardcodeados."""
+        self._dynamic_symbols = None
+    
+    @property
+    def active_symbols(self) -> list[str]:
+        """
+        Obtener símbolos activos para esta estrategia.
+        
+        Prioridad:
+        1. Símbolos dinámicos (si están establecidos via set_universe)
+        2. Símbolos hardcodeados de la estrategia (propiedad symbols)
+        """
+        if self._dynamic_symbols is not None:
+            return self._dynamic_symbols
+        return self.symbols
     
     @property
     @abstractmethod
     def symbols(self) -> list[str]:
-        """Lista de símbolos que analiza esta estrategia."""
+        """Lista de símbolos que analiza esta estrategia (hardcodeados)."""
         pass
     
-    def generate_signals(self, context: MarketContext) -> list[Signal]:
+    async def generate_signals(self, context: MarketContext) -> list[Signal]:
         """
         Generar señales para todos los símbolos configurados.
         
@@ -88,8 +121,11 @@ class BaseSwingStrategy(TradingStrategy):
             )
             return signals
         
+        # Usar active_symbols (dinámicos si están, sino hardcodeados)
+        symbols_to_analyze = self.active_symbols
+        
         # Analizar cada símbolo
-        for symbol in self.symbols:
+        for symbol in symbols_to_analyze:
             try:
                 # Verificar si ya existe posición en este símbolo
                 existing_position = self._get_position_for_symbol(
@@ -105,7 +141,12 @@ class BaseSwingStrategy(TradingStrategy):
                     self.logger.warning(f"Sin datos de mercado para {symbol}")
                     continue
                 
-                # Analizar y generar señal
+                # Analizar y generar señal (puede ser async en subclases)
+                # NOTA: BaseSwing espera _analyze_symbol síncrono por defecto,
+                # pero subclases pueden sobreescribirlo como async?
+                # No, si llamamos self._analyze_symbol(...), si es síncrono funciona.
+                # Si queremos permitir que _analyze_symbol sea async, deberíamos esperarlo.
+                # Por ahora mantenemos _analyze_symbol síncrono en Base.
                 signal = self._analyze_symbol(symbol, market_data, context)
                 
                 if signal and signal.direction != SignalDirection.HOLD:
@@ -128,7 +169,7 @@ class BaseSwingStrategy(TradingStrategy):
         self._last_signals = signals
         return signals
     
-    def should_close(
+    async def should_close(
         self, 
         position: PositionInfo, 
         context: MarketContext
@@ -303,7 +344,7 @@ class BaseSwingStrategy(TradingStrategy):
     def _calculate_signal_expiry(self) -> datetime:
         """Calcular timestamp de expiración de señal."""
         ttl_hours = self.config.get("signal_ttl_hours", 24)
-        return datetime.utcnow() + timedelta(hours=ttl_hours)
+        return datetime.now(timezone.utc) + timedelta(hours=ttl_hours)
     
     def get_metrics(self) -> dict:
         """Obtener métricas extendidas."""
@@ -312,5 +353,6 @@ class BaseSwingStrategy(TradingStrategy):
             **base_metrics,
             "signals_generated": self._signals_generated,
             "positions_closed": self._positions_closed,
-            "symbols_count": len(self.symbols),
+            "symbols_count": len(self.active_symbols),
+            "using_dynamic_universe": self._dynamic_symbols is not None,
         }

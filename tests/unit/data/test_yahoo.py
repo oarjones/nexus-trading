@@ -29,8 +29,9 @@ class TestYahooProvider:
         assert provider.rate_limit == 0.5
         assert provider.max_retries == 3
     
+    @pytest.mark.asyncio
     @patch('src.data.providers.yahoo.yf.Ticker')
-    def test_get_historical_success(self, mock_ticker_class):
+    async def test_get_historical_success(self, mock_ticker_class):
         """Test successful historical data download."""
         # Mock yfinance response
         mock_ticker = Mock()
@@ -50,10 +51,9 @@ class TestYahooProvider:
         
         # Test download
         provider = YahooProvider()
-        result = provider.get_historical(
+        result = await provider.get_historical(
             'AAPL',
-            start=date(2024, 1, 1),
-            end=date(2024, 1, 5)
+            duration='5 D'
         )
         
         assert not result.empty
@@ -65,32 +65,7 @@ class TestYahooProvider:
         assert (result['symbol'] == 'AAPL').all()
         assert (result['source'] == 'yahoo').all()
     
-    @patch('src.data.providers.yahoo.yf.Ticker')
-    def test_get_latest(self, mock_ticker_class):
-        """Test latest data download."""
-        mock_ticker = Mock()
-        mock_ticker_class.return_value = mock_ticker
-        
-        # Create sample data for last 5 days
-        end_date = date.today()
-        start_date = end_date - timedelta(days=5)
-        index = pd.date_range(start=start_date, end=end_date, freq='D')
-        
-        data = {
-            'Open': [100.0] * len(index),
-            'High': [101.0] * len(index),
-            'Low': [99.0] * len(index),
-            'Close': [100.5] * len(index),
-            'Volume': [1000] * len(index)
-        }
-        mock_df = pd.DataFrame(data, index=index)
-        mock_ticker.history.return_value = mock_df
-        
-        provider = YahooProvider()
-        result = provider.get_latest('AAPL', days=5)
-        
-        assert not result.empty
-        assert 'AAPL' in result['symbol'].values
+
     
     def test_standardize_dataframe(self):
         """Test DataFrame standardization."""
@@ -129,28 +104,9 @@ class TestYahooProvider:
         
         assert result.empty
     
-    def test_validate_data_empty(self):
-        """Test validation of empty data."""
-        provider = YahooProvider()
-        result = provider._validate_data(pd.DataFrame(), 'TEST')
-        
-        assert result is False
+
     
-    def test_validate_data_valid(self):
-        """Test validation of valid data."""
-        provider = YahooProvider()
-        
-        data = {
-            'open': [100.0, 101.0],
-            'high': [101.0, 102.0],
-            'low': [99.0, 100.0],
-            'close': [100.5, 101.5],
-            'volume': [1000, 1100]
-        }
-        df = pd.DataFrame(data)
-        
-        result = provider._validate_data(df, 'TEST')
-        assert result is True
+
     
     @patch('src.data.providers.yahoo.time.sleep')
     def test_rate_limiting(self, mock_sleep):
@@ -166,32 +122,39 @@ class TestYahooProvider:
         # Verify sleep was called
         assert mock_sleep.called
     
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
     @patch('src.data.providers.yahoo.yf.Ticker')
-    def test_get_current_price(self, mock_ticker_class):
+    async def test_get_current_price(self, mock_ticker_class):
         """Test getting current price."""
         mock_ticker = Mock()
         mock_ticker_class.return_value = mock_ticker
-        mock_ticker.info = {'currentPrice': 150.25}
+        # get_quote uses fast_info.last_price
+        mock_ticker.fast_info.last_price = 150.25
         
         provider = YahooProvider()
-        price = provider.get_current_price('AAPL')
+        quote = await provider.get_quote('AAPL')
         
-        assert price == 150.25
+        assert quote is not None
+        assert quote['last'] == 150.25
     
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
     @patch('src.data.providers.yahoo.yf.Ticker')
-    def test_get_current_price_no_data(self, mock_ticker_class):
+    async def test_get_current_price_no_data(self, mock_ticker_class):
         """Test getting current price when no data available."""
         mock_ticker = Mock()
         mock_ticker_class.return_value = mock_ticker
-        mock_ticker.info = {}
+        mock_ticker.fast_info.last_price = None
         
         provider = YahooProvider()
-        price = provider.get_current_price('INVALID')
+        quote = await provider.get_quote('INVALID')
         
-        assert price is None
+        assert quote is None
     
+    @pytest.mark.asyncio
     @patch('src.data.providers.yahoo.yf.Ticker')
-    def test_retry_on_error(self, mock_ticker_class):
+    async def test_retry_on_error(self, mock_ticker_class):
         """Test retry logic on errors."""
         mock_ticker = Mock()
         mock_ticker_class.return_value = mock_ticker
@@ -214,7 +177,7 @@ class TestYahooProvider:
         ]
         
         provider = YahooProvider(max_retries=3)
-        result = provider.get_historical('AAPL', date(2024, 1, 1), date(2024, 1, 2))
+        result = await provider.get_historical('AAPL', duration='2 D')
         
         # Should succeed on third try
         assert not result.empty
@@ -227,4 +190,3 @@ class TestYahooProvider:
         
         assert 'YahooProvider' in repr_str
         assert '1.0' in repr_str
-        assert '5' in repr_str

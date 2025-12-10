@@ -144,7 +144,9 @@ class MCPServers:
         self,
         market_data_url: str = "http://localhost:3001",
         technical_url: str = "http://localhost:3002",
-        risk_url: str = "http://localhost:3003"
+        risk_url: str = "http://localhost:3003",
+        ml_models_url: str = "http://localhost:3005",
+        ibkr_url: str = "http://localhost:3004"
     ):
         """
         Initialize MCP servers configuration.
@@ -153,10 +155,14 @@ class MCPServers:
             market_data_url: Market data server URL
             technical_url: Technical analysis server URL
             risk_url: Risk management server URL
+            ml_models_url: ML models server URL
+            ibkr_url: IBKR integration server URL
         """
         self.market_data = market_data_url
         self.technical = technical_url
         self.risk = risk_url
+        self.ml_models = ml_models_url
+        self.ibkr = ibkr_url
     
     @classmethod
     def from_env(cls):
@@ -167,11 +173,15 @@ class MCPServers:
         - MCP_MARKET_DATA_URL
         - MCP_TECHNICAL_URL
         - MCP_RISK_URL
+        - MCP_ML_MODELS_URL
+        - MCP_IBKR_URL
         """
         import os
         
         return cls(
             market_data_url=os.getenv("MCP_MARKET_DATA_URL", "http://localhost:3001"),
             technical_url=os.getenv("MCP_TECHNICAL_URL", "http://localhost:3002"),
-            risk_url=os.getenv("MCP_RISK_URL", "http://localhost:3003")
+            risk_url=os.getenv("MCP_RISK_URL", "http://localhost:3003"),
+            ml_models_url=os.getenv("MCP_ML_MODELS_URL", "http://localhost:3005"),
+            ibkr_url=os.getenv("MCP_IBKR_URL", "http://localhost:3004")
         )

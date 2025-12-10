@@ -28,8 +28,8 @@ for parent in [CURRENT_DIR, *CURRENT_DIR.parents]:
     candidate = parent / "src"
     
     if candidate.is_dir():
-        print('Añadiendo src al sys.path: ' + str(candidate))
-        sys.path.insert(0, str(candidate))
+        print('Añadiendo raiz al sys.path: ' + str(parent))
+        sys.path.insert(0, str(parent))
         break
 else:
     # Si llegamos aquí, es que no hemos encontrado src

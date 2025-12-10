@@ -1,168 +1,1006 @@
-# Symbol Configuration
-# Defines the universe of tradable symbols with metadata
+# Master Universe Configuration
+# 
+# Este archivo define el universo maestro de símbolos disponibles.
+# El UniverseManager filtra dinámicamente este universo cada día
+# según condiciones de mercado, liquidez y sugerencias del AI.
+#
+# Total: ~85 símbolos curados
+# - ETFs Core: 15
+# - ETFs Sectoriales: 12
+# - US Large Cap Tech: 15
+# - US Large Cap Value: 12
+# - EU Large Cap: 15
+# - Defensivos/Bonds: 8
+# - Commodities: 8
+
+# =============================================================================
+# CRITERIOS DE INCLUSIÓN:
+# - Volumen diario promedio > $500K
+# - Disponible en Interactive Brokers
+# - Spread típico < 0.5%
+# - Historial de al menos 2 años
+# =============================================================================
 
 symbols:
-  # European Stocks
-  - ticker: SAN.MC
-    name: Banco Santander
-    market: EU
-    source: yahoo
-    timezone: Europe/Madrid
-    currency: EUR
-    asset_type: stock
+  # ===========================================================================
+  # ETFs CORE - Alta liquidez, diversificados
+  # ===========================================================================
   
-  - ticker: BBVA.MC
-    name: Banco Bilbao Vizcaya Argentaria
-    market: EU
-    source: yahoo
-    timezone: Europe/Madrid
-    currency: EUR
-    asset_type: stock
-  
-  - ticker: ITX.MC
-    name: Inditex
-    market: EU
-    source: yahoo
-    timezone: Europe/Madrid
-    currency: EUR
-    asset_type: stock
-  
-  - ticker: IBE.MC
-    name: Iberdrola
-    market: EU
-    source: yahoo
-    timezone: Europe/Madrid
-    currency: EUR
-    asset_type: stock
-  
-  - ticker: REP.MC
-    name: Repsol
-    market: EU
-    source: yahoo
-    timezone: Europe/Madrid
-    currency: EUR
-    asset_type: stock
-  
-  - ticker: SAP.DE
-    name: SAP SE
-    market: EU
-    source: yahoo
-    timezone: Europe/Berlin
-    currency: EUR
-    asset_type: stock
-  
-  - ticker: ASML.AS
-    name: ASML Holding
-    market: EU
-    source: yahoo
-    timezone: Europe/Amsterdam
-    currency: EUR
-    asset_type: stock
-  
-  - ticker: BMW.DE
-    name: BMW AG
-    market: EU
-    source: yahoo
-    timezone: Europe/Berlin
-    currency: EUR
-    asset_type: stock
-  
-  # European ETFs
-  - ticker: EXW1.DE
-    name: iShares STOXX Europe 600
-    market: EU
-    source: yahoo
-    timezone: Europe/Berlin
-    currency: EUR
-    asset_type: etf
-  
-  - ticker: VWCE.DE
-    name: Vanguard FTSE All-World
-    market: EU
-    source: yahoo
-    timezone: Europe/Berlin
-    currency: EUR
-    asset_type: etf
-  
-  - ticker: CSPX.L
-    name: iShares Core S&P 500
-    market: EU
-    source: yahoo
-    timezone: Europe/London
-    currency: GBP
-    asset_type: etf
-  
-  # Forex
-  - ticker: EURUSD=X
-    name: EUR/USD
-    market: FOREX
-    source: yahoo
-    timezone: UTC
-    currency: USD
-    asset_type: forex
-  
-  - ticker: GBPUSD=X
-    name: GBP/USD
-    market: FOREX
-    source: yahoo
-    timezone: UTC
-    currency: USD
-    asset_type: forex
-  
-  - ticker: USDJPY=X
-    name: USD/JPY
-    market: FOREX
-    source: yahoo
-    timezone: UTC
-    currency: JPY
-    asset_type: forex
-  
-  # Cryptocurrency
-  - ticker: BTC-EUR
-    name: Bitcoin EUR
-    market: CRYPTO
-    source: yahoo
-    timezone: UTC
-    currency: EUR
-    asset_type: crypto
-  
-  - ticker: ETH-EUR
-    name: Ethereum EUR
-    market: CRYPTO
-    source: yahoo
-    timezone: UTC
-    currency: EUR
-    asset_type: crypto
-  
-  # US Reference (for benchmarking)
+  # US Market Broad
   - ticker: SPY
-    name: SPDR S&P 500 ETF
+    name: SPDR S&P 500 ETF Trust
     market: US
-    source: yahoo
+    source: ibkr
     timezone: America/New_York
     currency: USD
     asset_type: etf
-  
+    sector: broad_market
+    liquidity_tier: 1
+    
   - ticker: QQQ
-    name: Invesco QQQ Trust
+    name: Invesco QQQ Trust (NASDAQ-100)
     market: US
-    source: yahoo
+    source: ibkr
     timezone: America/New_York
     currency: USD
     asset_type: etf
+    sector: technology
+    liquidity_tier: 1
+    
+  - ticker: IWM
+    name: iShares Russell 2000 ETF
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: etf
+    sector: small_cap
+    liquidity_tier: 1
+    
+  - ticker: VTI
+    name: Vanguard Total Stock Market ETF
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: etf
+    sector: broad_market
+    liquidity_tier: 1
+    
+  - ticker: DIA
+    name: SPDR Dow Jones Industrial Average ETF
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: etf
+    sector: broad_market
+    liquidity_tier: 1
+    
+  # International
+  - ticker: VEA
+    name: Vanguard FTSE Developed Markets ETF
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: etf
+    sector: international
+    liquidity_tier: 2
+    
+  - ticker: VWO
+    name: Vanguard FTSE Emerging Markets ETF
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: etf
+    sector: emerging_markets
+    liquidity_tier: 2
+    
+  - ticker: EFA
+    name: iShares MSCI EAFE ETF
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: etf
+    sector: international
+    liquidity_tier: 2
+    
+  # EU Listed
+  - ticker: VWCE.DE
+    name: Vanguard FTSE All-World UCITS ETF
+    market: EU
+    source: ibkr
+    timezone: Europe/Berlin
+    currency: EUR
+    asset_type: etf
+    sector: global
+    liquidity_tier: 2
+    ibkr_ticker: VWCE
+    ibkr_exchange: IBIS
+    
+  - ticker: CSPX.L
+    name: iShares Core S&P 500 UCITS ETF
+    market: EU
+    source: ibkr
+    timezone: Europe/London
+    currency: USD
+    asset_type: etf
+    sector: us_equity
+    liquidity_tier: 2
+    ibkr_ticker: CSPX
+    ibkr_exchange: LSE
+    
+  - ticker: EUNL.DE
+    name: iShares Core MSCI Europe UCITS ETF
+    market: EU
+    source: ibkr
+    timezone: Europe/Berlin
+    currency: EUR
+    asset_type: etf
+    sector: europe
+    liquidity_tier: 2
+    ibkr_ticker: EUNL
+    ibkr_exchange: IBIS
+    
+  - ticker: IUSA.L
+    name: iShares S&P 500 UCITS ETF
+    market: EU
+    source: ibkr
+    timezone: Europe/London
+    currency: USD
+    asset_type: etf
+    sector: us_equity
+    liquidity_tier: 2
+    ibkr_ticker: IUSA
+    ibkr_exchange: LSE
+    
+  - ticker: IWDA.L
+    name: iShares Core MSCI World UCITS ETF
+    market: EU
+    source: ibkr
+    timezone: Europe/London
+    currency: USD
+    asset_type: etf
+    sector: global
+    liquidity_tier: 2
+    ibkr_ticker: IWDA
+    ibkr_exchange: LSE
+    
+  - ticker: SXR8.DE
+    name: iShares Core S&P 500 UCITS ETF EUR
+    market: EU
+    source: ibkr
+    timezone: Europe/Berlin
+    currency: EUR
+    asset_type: etf
+    sector: us_equity
+    liquidity_tier: 2
+    ibkr_ticker: SXR8
+    ibkr_exchange: IBIS
+    
+  - ticker: VUSA.L
+    name: Vanguard S&P 500 UCITS ETF
+    market: EU
+    source: ibkr
+    timezone: Europe/London
+    currency: USD
+    asset_type: etf
+    sector: us_equity
+    liquidity_tier: 2
+    ibkr_ticker: VUSA
+    ibkr_exchange: LSE
+
+  # ===========================================================================
+  # ETFs SECTORIALES
+  # ===========================================================================
+  
+  - ticker: XLK
+    name: Technology Select Sector SPDR
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: etf
+    sector: technology
+    liquidity_tier: 1
+    
+  - ticker: XLF
+    name: Financial Select Sector SPDR
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: etf
+    sector: financials
+    liquidity_tier: 1
+    
+  - ticker: XLE
+    name: Energy Select Sector SPDR
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: etf
+    sector: energy
+    liquidity_tier: 1
+    
+  - ticker: XLV
+    name: Health Care Select Sector SPDR
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: etf
+    sector: healthcare
+    liquidity_tier: 1
+    
+  - ticker: XLI
+    name: Industrial Select Sector SPDR
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: etf
+    sector: industrials
+    liquidity_tier: 2
+    
+  - ticker: XLY
+    name: Consumer Discretionary Select Sector SPDR
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: etf
+    sector: consumer_discretionary
+    liquidity_tier: 2
+    
+  - ticker: XLP
+    name: Consumer Staples Select Sector SPDR
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: etf
+    sector: consumer_staples
+    liquidity_tier: 2
+    defensive: true
+    
+  - ticker: XLU
+    name: Utilities Select Sector SPDR
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: etf
+    sector: utilities
+    liquidity_tier: 2
+    defensive: true
+    
+  - ticker: XLRE
+    name: Real Estate Select Sector SPDR
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: etf
+    sector: real_estate
+    liquidity_tier: 2
+    
+  - ticker: SMH
+    name: VanEck Semiconductor ETF
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: etf
+    sector: semiconductors
+    liquidity_tier: 1
+    
+  - ticker: XBI
+    name: SPDR S&P Biotech ETF
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: etf
+    sector: biotech
+    liquidity_tier: 2
+    
+  - ticker: ARKK
+    name: ARK Innovation ETF
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: etf
+    sector: innovation
+    liquidity_tier: 2
+
+  # ===========================================================================
+  # US LARGE CAP - TECHNOLOGY
+  # ===========================================================================
   
   - ticker: AAPL
     name: Apple Inc.
     market: US
-    source: yahoo
+    source: ibkr
     timezone: America/New_York
     currency: USD
     asset_type: stock
-  
+    sector: technology
+    liquidity_tier: 1
+    
   - ticker: MSFT
     name: Microsoft Corporation
     market: US
-    source: yahoo
+    source: ibkr
     timezone: America/New_York
     currency: USD
     asset_type: stock
+    sector: technology
+    liquidity_tier: 1
+    
+  - ticker: GOOGL
+    name: Alphabet Inc. Class A
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: stock
+    sector: technology
+    liquidity_tier: 1
+    
+  - ticker: AMZN
+    name: Amazon.com Inc.
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: stock
+    sector: consumer_discretionary
+    liquidity_tier: 1
+    
+  - ticker: NVDA
+    name: NVIDIA Corporation
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: stock
+    sector: semiconductors
+    liquidity_tier: 1
+    
+  - ticker: META
+    name: Meta Platforms Inc.
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: stock
+    sector: technology
+    liquidity_tier: 1
+    
+  - ticker: TSLA
+    name: Tesla Inc.
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: stock
+    sector: consumer_discretionary
+    liquidity_tier: 1
+    
+  - ticker: AMD
+    name: Advanced Micro Devices Inc.
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: stock
+    sector: semiconductors
+    liquidity_tier: 1
+    
+  - ticker: CRM
+    name: Salesforce Inc.
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: stock
+    sector: technology
+    liquidity_tier: 2
+    
+  - ticker: ADBE
+    name: Adobe Inc.
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: stock
+    sector: technology
+    liquidity_tier: 2
+    
+  - ticker: NFLX
+    name: Netflix Inc.
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: stock
+    sector: communication_services
+    liquidity_tier: 2
+    
+  - ticker: AVGO
+    name: Broadcom Inc.
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: stock
+    sector: semiconductors
+    liquidity_tier: 2
+    
+  - ticker: INTC
+    name: Intel Corporation
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: stock
+    sector: semiconductors
+    liquidity_tier: 2
+    
+  - ticker: ORCL
+    name: Oracle Corporation
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: stock
+    sector: technology
+    liquidity_tier: 2
+    
+  - ticker: CSCO
+    name: Cisco Systems Inc.
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: stock
+    sector: technology
+    liquidity_tier: 2
+
+  # ===========================================================================
+  # US LARGE CAP - VALUE / INDUSTRIALS
+  # ===========================================================================
+  
+  - ticker: JPM
+    name: JPMorgan Chase & Co.
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: stock
+    sector: financials
+    liquidity_tier: 1
+    
+  - ticker: V
+    name: Visa Inc.
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: stock
+    sector: financials
+    liquidity_tier: 1
+    
+  - ticker: JNJ
+    name: Johnson & Johnson
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: stock
+    sector: healthcare
+    liquidity_tier: 1
+    defensive: true
+    
+  - ticker: UNH
+    name: UnitedHealth Group Inc.
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: stock
+    sector: healthcare
+    liquidity_tier: 1
+    
+  - ticker: PG
+    name: Procter & Gamble Co.
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: stock
+    sector: consumer_staples
+    liquidity_tier: 2
+    defensive: true
+    
+  - ticker: XOM
+    name: Exxon Mobil Corporation
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: stock
+    sector: energy
+    liquidity_tier: 1
+    
+  - ticker: CVX
+    name: Chevron Corporation
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: stock
+    sector: energy
+    liquidity_tier: 2
+    
+  - ticker: BAC
+    name: Bank of America Corp.
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: stock
+    sector: financials
+    liquidity_tier: 1
+    
+  - ticker: KO
+    name: Coca-Cola Company
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: stock
+    sector: consumer_staples
+    liquidity_tier: 2
+    defensive: true
+    
+  - ticker: DIS
+    name: Walt Disney Company
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: stock
+    sector: communication_services
+    liquidity_tier: 2
+    
+  - ticker: HD
+    name: Home Depot Inc.
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: stock
+    sector: consumer_discretionary
+    liquidity_tier: 2
+    
+  - ticker: CAT
+    name: Caterpillar Inc.
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: stock
+    sector: industrials
+    liquidity_tier: 2
+
+  # ===========================================================================
+  # EU LARGE CAP
+  # ===========================================================================
+  
+  - ticker: ASML.AS
+    name: ASML Holding N.V.
+    market: EU
+    source: ibkr
+    timezone: Europe/Amsterdam
+    currency: EUR
+    asset_type: stock
+    sector: semiconductors
+    liquidity_tier: 1
+    ibkr_ticker: ASML
+    ibkr_exchange: AEB
+    
+  - ticker: SAP.DE
+    name: SAP SE
+    market: EU
+    source: ibkr
+    timezone: Europe/Berlin
+    currency: EUR
+    asset_type: stock
+    sector: technology
+    liquidity_tier: 2
+    ibkr_ticker: SAP
+    ibkr_exchange: IBIS
+    
+  - ticker: LVMH.PA
+    name: LVMH Moët Hennessy Louis Vuitton
+    market: EU
+    source: ibkr
+    timezone: Europe/Paris
+    currency: EUR
+    asset_type: stock
+    sector: consumer_discretionary
+    liquidity_tier: 2
+    ibkr_ticker: MC
+    ibkr_exchange: SBF
+    
+  - ticker: SIE.DE
+    name: Siemens AG
+    market: EU
+    source: ibkr
+    timezone: Europe/Berlin
+    currency: EUR
+    asset_type: stock
+    sector: industrials
+    liquidity_tier: 2
+    ibkr_ticker: SIE
+    ibkr_exchange: IBIS
+    
+  - ticker: NESN.SW
+    name: Nestlé S.A.
+    market: EU
+    source: ibkr
+    timezone: Europe/Zurich
+    currency: CHF
+    asset_type: stock
+    sector: consumer_staples
+    liquidity_tier: 2
+    defensive: true
+    ibkr_ticker: NESN
+    ibkr_exchange: EBS
+    
+  - ticker: NOVN.SW
+    name: Novartis AG
+    market: EU
+    source: ibkr
+    timezone: Europe/Zurich
+    currency: CHF
+    asset_type: stock
+    sector: healthcare
+    liquidity_tier: 2
+    defensive: true
+    ibkr_ticker: NOVN
+    ibkr_exchange: EBS
+    
+  - ticker: ROG.SW
+    name: Roche Holding AG
+    market: EU
+    source: ibkr
+    timezone: Europe/Zurich
+    currency: CHF
+    asset_type: stock
+    sector: healthcare
+    liquidity_tier: 2
+    defensive: true
+    ibkr_ticker: ROG
+    ibkr_exchange: EBS
+    
+  - ticker: SAN.MC
+    name: Banco Santander S.A.
+    market: EU
+    source: ibkr
+    timezone: Europe/Madrid
+    currency: EUR
+    asset_type: stock
+    sector: financials
+    liquidity_tier: 2
+    ibkr_ticker: SAN
+    ibkr_exchange: BME
+    
+  - ticker: IBE.MC
+    name: Iberdrola S.A.
+    market: EU
+    source: ibkr
+    timezone: Europe/Madrid
+    currency: EUR
+    asset_type: stock
+    sector: utilities
+    liquidity_tier: 2
+    defensive: true
+    ibkr_ticker: IBE
+    ibkr_exchange: BME
+    
+  - ticker: ITX.MC
+    name: Industria de Diseño Textil (Inditex)
+    market: EU
+    source: ibkr
+    timezone: Europe/Madrid
+    currency: EUR
+    asset_type: stock
+    sector: consumer_discretionary
+    liquidity_tier: 2
+    ibkr_ticker: ITX
+    ibkr_exchange: BME
+    
+  - ticker: AZN.L
+    name: AstraZeneca PLC
+    market: EU
+    source: ibkr
+    timezone: Europe/London
+    currency: GBP
+    asset_type: stock
+    sector: healthcare
+    liquidity_tier: 2
+    defensive: true
+    ibkr_ticker: AZN
+    ibkr_exchange: LSE
+    
+  - ticker: SHEL.L
+    name: Shell PLC
+    market: EU
+    source: ibkr
+    timezone: Europe/London
+    currency: GBP
+    asset_type: stock
+    sector: energy
+    liquidity_tier: 2
+    ibkr_ticker: SHEL
+    ibkr_exchange: LSE
+    
+  - ticker: HSBA.L
+    name: HSBC Holdings PLC
+    market: EU
+    source: ibkr
+    timezone: Europe/London
+    currency: GBP
+    asset_type: stock
+    sector: financials
+    liquidity_tier: 2
+    ibkr_ticker: HSBA
+    ibkr_exchange: LSE
+    
+  - ticker: MC.PA
+    name: LVMH (Euronext Paris)
+    market: EU
+    source: ibkr
+    timezone: Europe/Paris
+    currency: EUR
+    asset_type: stock
+    sector: consumer_discretionary
+    liquidity_tier: 2
+    ibkr_ticker: MC
+    ibkr_exchange: SBF
+    
+  - ticker: TTE.PA
+    name: TotalEnergies SE
+    market: EU
+    source: ibkr
+    timezone: Europe/Paris
+    currency: EUR
+    asset_type: stock
+    sector: energy
+    liquidity_tier: 2
+    ibkr_ticker: TTE
+    ibkr_exchange: SBF
+
+  # ===========================================================================
+  # DEFENSIVOS / BONDS
+  # ===========================================================================
+  
+  - ticker: TLT
+    name: iShares 20+ Year Treasury Bond ETF
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: etf
+    sector: bonds
+    liquidity_tier: 1
+    defensive: true
+    
+  - ticker: IEF
+    name: iShares 7-10 Year Treasury Bond ETF
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: etf
+    sector: bonds
+    liquidity_tier: 2
+    defensive: true
+    
+  - ticker: SHY
+    name: iShares 1-3 Year Treasury Bond ETF
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: etf
+    sector: bonds
+    liquidity_tier: 2
+    defensive: true
+    
+  - ticker: LQD
+    name: iShares iBoxx Investment Grade Corporate Bond ETF
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: etf
+    sector: bonds
+    liquidity_tier: 2
+    defensive: true
+    
+  - ticker: BND
+    name: Vanguard Total Bond Market ETF
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: etf
+    sector: bonds
+    liquidity_tier: 2
+    defensive: true
+    
+  - ticker: GOVT
+    name: iShares U.S. Treasury Bond ETF
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: etf
+    sector: bonds
+    liquidity_tier: 2
+    defensive: true
+    
+  - ticker: VNQ
+    name: Vanguard Real Estate ETF
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: etf
+    sector: real_estate
+    liquidity_tier: 2
+    
+  - ticker: SCHD
+    name: Schwab US Dividend Equity ETF
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: etf
+    sector: dividend
+    liquidity_tier: 2
+    defensive: true
+
+  # ===========================================================================
+  # COMMODITIES
+  # ===========================================================================
+  
+  - ticker: GLD
+    name: SPDR Gold Shares
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: etf
+    sector: gold
+    liquidity_tier: 1
+    defensive: true
+    
+  - ticker: SLV
+    name: iShares Silver Trust
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: etf
+    sector: silver
+    liquidity_tier: 2
+    
+  - ticker: USO
+    name: United States Oil Fund
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: etf
+    sector: oil
+    liquidity_tier: 2
+    
+  - ticker: UNG
+    name: United States Natural Gas Fund
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: etf
+    sector: natural_gas
+    liquidity_tier: 2
+    
+  - ticker: DBA
+    name: Invesco DB Agriculture Fund
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: etf
+    sector: agriculture
+    liquidity_tier: 3
+    
+  - ticker: DBB
+    name: Invesco DB Base Metals Fund
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: etf
+    sector: metals
+    liquidity_tier: 3
+    
+  - ticker: DBC
+    name: Invesco DB Commodity Index Tracking Fund
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: etf
+    sector: commodities
+    liquidity_tier: 2
+    
+  - ticker: PDBC
+    name: Invesco Optimum Yield Diversified Commodity Strategy
+    market: US
+    source: ibkr
+    timezone: America/New_York
+    currency: USD
+    asset_type: etf
+    sector: commodities
+    liquidity_tier: 2
+
+
+# =============================================================================
+# METADATA DEL UNIVERSO
+# =============================================================================
+universe_metadata:
+  version: "1.0.0"
+  last_updated: "2025-01-01"
+  total_symbols: 85
+  
+  breakdown:
+    etf_core: 15
+    etf_sectorial: 12
+    us_tech: 15
+    us_value: 12
+    eu_large_cap: 15
+    defensivos: 8
+    commodities: 8
+  
+  liquidity_tiers:
+    tier_1: "Highest liquidity - always available"
+    tier_2: "High liquidity - usually available"
+    tier_3: "Moderate liquidity - may be filtered in low volume"
+  
+  sectors:
+    - broad_market
+    - technology
+    - semiconductors
+    - financials
+    - healthcare
+    - energy
+    - consumer_discretionary
+    - consumer_staples
+    - industrials
+    - utilities
+    - communication_services
+    - real_estate
+    - bonds
+    - gold
+    - commodities

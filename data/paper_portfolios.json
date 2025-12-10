@@ -1,0 +1,18 @@
+{
+  "hmm_rules": {
+    "strategy_id": "hmm_rules",
+    "initial_capital": 25000.0,
+    "currency": "EUR",
+    "cash": 25000.0,
+    "positions": {},
+    "trades_count": 0
+  },
+  "ai_agent_swing": {
+    "strategy_id": "ai_agent_swing",
+    "initial_capital": 25000.0,
+    "currency": "EUR",
+    "cash": 25000.0,
+    "positions": {},
+    "trades_count": 0
+  }
+}

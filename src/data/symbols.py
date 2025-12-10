@@ -32,6 +32,9 @@ class Symbol:
         timezone: Timezone for trading hours (e.g., 'Europe/Madrid', 'America/New_York')
         currency: Quote currency (e.g., 'EUR', 'USD')
         asset_type: Type of asset ('stock', 'etf', 'forex', 'crypto')
+        sector: Industry sector (e.g., 'technology', 'financials', 'healthcare')
+        liquidity_tier: Liquidity classification (1=highest, 2=high, 3=moderate)
+        defensive: Whether this is a defensive/safe-haven asset
     """
     ticker: str
     name: str
@@ -40,6 +43,11 @@ class Symbol:
     timezone: str
     currency: str
     asset_type: str = 'stock'
+    sector: str = 'unknown'
+    liquidity_tier: int = 2
+    defensive: bool = False
+    ibkr_ticker: Optional[str] = None
+    ibkr_exchange: Optional[str] = None
     
     def __post_init__(self):
         """Validate symbol data after initialization."""
@@ -49,6 +57,8 @@ class Symbol:
             logger.warning(f"Unusual market classification for {self.ticker}: {self.market}")
         if self.source not in ['yahoo', 'ibkr', 'kraken']:
             logger.warning(f"Unusual data source for {self.ticker}: {self.source}")
+        if self.liquidity_tier not in [1, 2, 3]:
+            logger.warning(f"Invalid liquidity_tier for {self.ticker}: {self.liquidity_tier}")
 
 
 class SymbolRegistry:
@@ -193,6 +203,57 @@ class SymbolRegistry:
             Number of symbols
         """
         return len(self.symbols)
+    
+    def get_by_sector(self, sector: str) -> List[Symbol]:
+        """
+        Filter symbols by sector.
+        
+        Args:
+            sector: Industry sector (e.g., 'technology', 'financials')
+            
+        Returns:
+            List of symbols in the specified sector
+        """
+        return [s for s in self.symbols if s.sector == sector]
+    
+    def get_by_liquidity_tier(self, tier: int) -> List[Symbol]:
+        """
+        Filter symbols by liquidity tier.
+        
+        Args:
+            tier: Liquidity tier (1=highest, 2=high, 3=moderate)
+            
+        Returns:
+            List of symbols with specified liquidity tier
+        """
+        return [s for s in self.symbols if s.liquidity_tier == tier]
+    
+    def get_defensive(self) -> List[Symbol]:
+        """
+        Get all defensive/safe-haven symbols.
+        
+        Returns:
+            List of defensive symbols (bonds, gold, utilities, etc.)
+        """
+        return [s for s in self.symbols if s.defensive]
+    
+    def get_high_liquidity(self) -> List[Symbol]:
+        """
+        Get symbols with highest liquidity (tier 1 and 2).
+        
+        Returns:
+            List of high-liquidity symbols
+        """
+        return [s for s in self.symbols if s.liquidity_tier <= 2]
+    
+    def get_sectors(self) -> List[str]:
+        """
+        Get list of all unique sectors.
+        
+        Returns:
+            List of sector names
+        """
+        return list(set(s.sector for s in self.symbols))
     
     def __repr__(self) -> str:
         """String representation of registry."""

@@ -120,7 +120,7 @@ class ETFMomentumStrategy(BaseSwingStrategy):
             
         return universe
     
-    def generate_signals(self, context: MarketContext) -> list[Signal]:
+    async def generate_signals(self, context: MarketContext) -> list[Signal]:
         """
         Generar señales basadas en ranking de momentum.
         
@@ -170,7 +170,7 @@ class ETFMomentumStrategy(BaseSwingStrategy):
         self._last_signals = signals
         return signals
     
-    def should_close(
+    async def should_close(
         self, 
         position: PositionInfo, 
         context: MarketContext
@@ -181,7 +181,7 @@ class ETFMomentumStrategy(BaseSwingStrategy):
         Añade lógica específica de ranking: cerrar si cae del top N.
         """
         # 1. Chequeos base (régimen, holding, técnico)
-        base_signal = super().should_close(position, context)
+        base_signal = await super().should_close(position, context)
         if base_signal:
             return base_signal
         
@@ -221,7 +221,8 @@ class ETFMomentumStrategy(BaseSwingStrategy):
         """Calcular y rankear momentum para todo el universo."""
         scores = []
         
-        for symbol in self.symbols:
+        # Usar active_symbols (dinámicos o hardcodeados)
+        for symbol in self.active_symbols:
             market_data = context.market_data.get(symbol)
             if not market_data:
                 continue

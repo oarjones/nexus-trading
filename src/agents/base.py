@@ -92,7 +92,7 @@ class BaseAgent(ABC):
             self.logger.info(f"Agent '{self.name}' started successfully")
             
             # Start main loop
-            asyncio.create_task(self._run_loop())
+            self._task = asyncio.create_task(self._run_loop())
             
         except Exception as e:
             self.logger.error(f"Failed to start agent '{self.name}': {e}", exc_info=True)
@@ -102,6 +102,14 @@ class BaseAgent(ABC):
         """Stop the agent gracefully."""
         self.logger.info(f"Stopping agent '{self.name}'...")
         self.running = False
+        
+        if hasattr(self, '_task') and self._task:
+            self._task.cancel()
+            try:
+                await self._task
+            except asyncio.CancelledError:
+                pass
+            self._task = None
         
         # Remove heartbeat
         if self.redis:

@@ -143,32 +143,29 @@ class TestAgentDecision:
         with pytest.raises(ValueError):
             AgentDecision(
                 decision_id="dec_test",
-                context_id="ctx_test",
                 timestamp=datetime.utcnow(),
-                actions=[],
+                # context_id removed
                 market_view=MarketView.BULLISH,
-                reasoning="Test",
-                key_factors=["factor1"],
                 confidence=1.5,  # Inválido
+                reasoning="Test",
+                signals=[], # was actions
+                # key_factors removed
                 model_used="test",
-                autonomy_level=AutonomyLevel.MODERATE,
+                # autonomy_level removed
                 tokens_used=100,
-                latency_ms=150
+                execution_time_ms=150 # was latency_ms
             )
     
     def test_has_actions(self):
         decision = AgentDecision(
             decision_id="dec_test",
-            context_id="ctx_test",
             timestamp=datetime.utcnow(),
-            actions=[],
             market_view=MarketView.NEUTRAL,
-            reasoning="No opportunities",
-            key_factors=[],
             confidence=0.8,
+            reasoning="No opportunities",
+            signals=[],
             model_used="test",
-            autonomy_level=AutonomyLevel.MODERATE,
             tokens_used=100,
-            latency_ms=150
+            execution_time_ms=150
         )
-        assert decision.has_actions is False
+        assert not decision.signals

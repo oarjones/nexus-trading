@@ -22,24 +22,11 @@ from ib_insync import IB, Stock, Contract, util
 logger = logging.getLogger(__name__)
 
 
+from src.data.symbols import SymbolRegistry
+
 class IBKRProvider:
     """
     Interactive Brokers data provider for real-time and historical data.
-    
-    Features:
-    - Async connection to TWS/IB Gateway
-    - Real-time quote retrieval (bid/ask/last)
-    - Historical bars download
-    - Connection health monitoring
-    - Paper trading verification (safety check)
-    - Automatic reconnection logic
-    
-    Attributes:
-        host: IBKR Gateway/TWS host (default: 127.0.0.1)
-        port: IBKR port (7497 for paper trading, 7496 for live)
-        client_id: Client ID for connection (default: 1)
-        ib: IB() instance from ib_insync
-        connected: Connection status
     """
     
     # Port constants
@@ -52,17 +39,11 @@ class IBKRProvider:
         port: int = 7497,
         client_id: int = 1,
         timeout: int = 10,
-        max_retries: int = 3
+        max_retries: int = 3,
+        config_path: str = 'config/symbols.yaml'
     ):
         """
         Initialize IBKR provider.
-        
-        Args:
-            host: TWS/Gateway host address
-            port: TWS/Gateway port (7497=paper, 7496=live)
-            client_id: Unique client identifier
-            timeout: Connection timeout in seconds
-            max_retries: Maximum connection retries
         """
         self.host = host
         self.port = port
@@ -70,23 +51,27 @@ class IBKRProvider:
         self.timeout = timeout
         self.max_retries = max_retries
         
+        # Load symbol registry for mapping
+        try:
+            self.registry = SymbolRegistry(config_path)
+            logger.info("IBKRProvider loaded SymbolRegistry")
+        except Exception as e:
+            logger.warning(f"Failed to load SymbolRegistry: {e}. Using defaults.")
+            self.registry = None
+        
         self.ib = IB()
         self.connected = False
         
         logger.info(
-            f"IBKR Provider initialized for {host}:{port} "
+            f"IBKRProvider initialized for {host}:{port} "
             f"(client_id={client_id})"
         )
     
+    # ... (connect/disconnect methods unchanged)
+
     async def connect(self) -> bool:
         """
         Connect to TWS or IB Gateway with retry logic.
-        
-        Returns:
-            True if connection successful, False otherwise
-            
-        Raises:
-            ConnectionError: If connection fails after retries
         """
         for attempt in range(1, self.max_retries + 1):
             try:
@@ -107,10 +92,6 @@ class IBKRProvider:
                 else:
                     logger.info("✓ Connected to paper trading account")
                 
-                # Get account info
-                # accounts = self.ib.managedAccounts()
-                # logger.info(f"Connected accounts: {accounts}")
-                
                 return True
                 
             except Exception as e:
@@ -120,7 +101,6 @@ class IBKRProvider:
                 else:
                     logger.error(f"Failed to connect to IBKR after {self.max_retries} attempts")
                     self.connected = False
-                    # Don't raise here, just return False to allow fallback
                     return False
         return False
     
@@ -134,24 +114,34 @@ class IBKRProvider:
             finally:
                 self.connected = False
                 logger.info("Disconnected from IBKR")
-    
+
     def _create_contract(self, symbol: str, exchange: str = 'SMART') -> Contract:
         """
         Create IBKR contract for a symbol.
         
-        Args:
-            symbol: Stock ticker (e.g., 'AAPL')
-            exchange: Exchange to route through (default: 'SMART')
-            
-        Returns:
-            Contract object
+        Resolves ticker/formatting using SymbolRegistry if available.
         """
-        # Handle special cases if needed (e.g. forex)
-        if len(symbol) == 7 and symbol[3] == '.': # e.g. EUR.USD
-             # Forex logic could go here, for now assuming Stock
-             pass
-             
-        contract = Stock(symbol, exchange, 'USD')
+        ticker = symbol
+        currency = 'USD'
+        primary_exchange = exchange
+        
+        # Lookup in registry
+        if self.registry:
+            sym_obj = self.registry.get_by_ticker(symbol)
+            if sym_obj:
+                ticker = sym_obj.ibkr_ticker if sym_obj.ibkr_ticker else sym_obj.ticker
+                currency = sym_obj.currency
+                # Only override exchange if specific one needed and not 'SMART' or default
+                if sym_obj.ibkr_exchange:
+                    primary_exchange = sym_obj.ibkr_exchange
+        
+        # Fallback parsing for Yahoo tickers if not in registry
+        if '.' in ticker and ' ' not in ticker and not self.registry:
+            # Simple heuristic if registry failed (e.g. SAN.MC -> SAN)
+            # But safer to rely on registry.
+            pass
+
+        contract = Stock(ticker, primary_exchange, currency)
         return contract
     
     async def get_quote(self, symbol: str, exchange: str = 'SMART') -> Optional[Dict]:

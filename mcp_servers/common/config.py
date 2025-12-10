@@ -70,11 +70,17 @@ def _substitute_env_vars(text: str) -> str:
     import re
     
     def replace_var(match):
-        var_name = match.group(1)
-        value = os.getenv(var_name)
+        full_match = match.group(1)
         
+        # Handle default value syntax: ${VAR:-default}
+        if ":-" in full_match:
+            var_name, default_value = full_match.split(":-", 1)
+            return os.getenv(var_name, default_value)
+        
+        # Handle standard syntax: ${VAR}
+        value = os.getenv(full_match)
         if value is None:
-            raise ConfigError(f"Environment variable not found: {var_name}")
+            raise ConfigError(f"Environment variable not found: {full_match}")
         
         return value
     

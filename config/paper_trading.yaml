@@ -1,0 +1,39 @@
+# config/paper_trading.yaml
+# Configuración del motor de Paper Trading
+
+# Configuración por estrategia
+portfolios:
+  hmm_rules:
+    initial_capital: 25000.0
+    currency: EUR
+    
+  ai_agent_swing:
+    initial_capital: 25000.0
+    currency: EUR
+
+# Parámetros de simulación
+simulation:
+  # Slippage en basis points (0.05%)
+  slippage_bps: 5
+  
+  # Comisiones simuladas (estructura tier IBKR approx)
+  commission:
+    per_share: 0.005
+    min_per_order: 1.00
+    max_pct: 0.5  # Max 0.5% del valor del trade
+    
+  # Suposiciones de ejecución
+  assume_fill: true  # Siempre llenar órdenes si precio toca
+  fill_probability: 1.0
+
+# Logging y Persistencia
+persistence:
+  enabled: true
+  storage_path: "data/paper_portfolios.json"
+  history_path: "data/paper_trades_history.csv"
+  auto_save_interval_seconds: 60
+
+logging:
+  trades_to_db: true
+  trades_to_csv: true
+  csv_path: "reports/trades/"

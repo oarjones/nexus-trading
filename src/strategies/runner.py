@@ -3,6 +3,7 @@ Strategy Runner - Ejecutor de estrategias de trading.
 
 Coordina:
 - Obtención del régimen actual
+- Gestión del universo de símbolos (via UniverseManager)
 - Selección de estrategias activas
 - Generación de señales
 - Evaluación de cierres
@@ -10,7 +11,7 @@ Coordina:
 """
 
 import asyncio
-from datetime import datetime
+from datetime import datetime, date, timezone
 from typing import Optional
 import logging
 
@@ -34,15 +35,21 @@ class StrategyRunner:
     
     Responsabilidades:
     1. Consultar régimen de mercado (via mcp-ml-models)
-    2. Obtener datos de mercado (via mcp-market-data)
-    3. Ejecutar estrategias activas para el régimen
-    4. Publicar señales generadas
+    2. Gestionar universo de símbolos (via UniverseManager)
+    3. Obtener datos de mercado (via mcp-market-data)
+    4. Ejecutar estrategias activas para el régimen
+    5. Publicar señales generadas
     
     Uso:
         runner = StrategyRunner(mcp_client, message_bus)
         await runner.run_cycle()  # Un ciclo de análisis
         # o
         await runner.start()  # Loop continuo
+        
+    Con UniverseManager (recomendado):
+        universe_mgr = UniverseManager(registry, data_provider)
+        runner = StrategyRunner(mcp_client, message_bus, universe_manager=universe_mgr)
+        # El screening se ejecuta automáticamente una vez al día
     """
     
     def __init__(
@@ -50,7 +57,8 @@ class StrategyRunner:
         mcp_client,           # Cliente MCP para llamar a servers
         message_bus = None,   # Bus para publicar señales (opcional)
         db_session = None,    # Sesión de BD para posiciones
-        config_path: str = None
+        config_path: str = None,
+        universe_manager = None,  # UniverseManager (opcional)
     ):
         """
         Inicializar runner.
@@ -60,17 +68,99 @@ class StrategyRunner:
             message_bus: Bus de mensajes para publicar señales
             db_session: Sesión de base de datos
             config_path: Ruta a configuración
+            universe_manager: Gestor de universo de símbolos (opcional)
         """
         self.mcp = mcp_client
         self.bus = message_bus
         self.db = db_session
         self.config = get_strategy_config(config_path)
+        self.universe_manager = universe_manager
         
         self._running = False
         self._last_run: Optional[datetime] = None
+        self._last_universe_update: Optional[date] = None
         self._signals_generated: int = 0
         self._cycles_completed: int = 0
     
+    async def run_single_strategy(self, strategy_id: str) -> list[Signal]:
+        """
+        Ejecutar una única estrategia por ID.
+        
+        Args:
+            strategy_id: ID de la estrategia a ejecutar.
+            
+        Returns:
+            Lista de señales generadas.
+        """
+        logger.info(f"START: Ejecutando estrategia {strategy_id}")
+        start_time = datetime.now(timezone.utc)
+        generated_signals = []
+        
+        try:
+            # 1. Obtener instancia de estrategia
+            strategy_config = self.config.get("strategies", {}).get(strategy_id)
+            if not strategy_config or not strategy_config.get("enabled", False):
+                logger.warning(f"Estrategia {strategy_id} no encontrada o deshabilitada.")
+                return []
+                
+            strategy = StrategyRegistry.get(strategy_id, strategy_config)
+            if not strategy:
+                logger.error(f"No se pudo instanciar la estrategia {strategy_id}")
+                return []
+                
+            # 2. Contexto de Mercado (Regime + Data)
+            # Nota: Optimizamos obteniendo solo datos necesarios para esta estrategias
+            # pero por simplicidad reutilizamos lógica general por ahora
+            regime_data = await self._get_current_regime()
+            regime = MarketRegime(regime_data["regime"])
+            
+            # Verificar si puede operar
+            if not strategy.can_operate_in_regime(regime):
+                logger.info(f"Estrategia {strategy_id} pausada en régimen {regime.value}")
+                return []
+                
+            # Datos de mercado
+            symbols = list(strategy.symbols) if hasattr(strategy, 'symbols') else []
+            # Si tiene universo dinámico, inyectarlo (aunque run_single suele ser para específicas)
+            if self.universe_manager and hasattr(strategy, 'set_universe'):
+                 symbols = self.universe_manager.active_symbols
+                 strategy.set_universe(symbols)
+                 
+            market_data = await self._get_market_data(symbols)
+            positions = await self._get_current_positions()
+            capital = await self._get_available_capital()
+            
+            context = MarketContext(
+                regime=regime,
+                regime_confidence=regime_data["confidence"],
+                regime_probabilities=regime_data.get("probabilities", {}),
+                market_data=market_data,
+                capital_available=capital,
+                positions=positions,
+            )
+            
+            # 3. Generar Señales
+            signals = await strategy.generate_signals(context)
+            generated_signals.extend(signals)
+            
+            # 4. REVIEWER / SIMULATOR HOOK
+            # Aquí podríamos llamar al OrderSimulator si estamos en modo Paper
+            if hasattr(self, 'order_simulator') and self.order_simulator:
+                logger.info(f"Simulando {len(signals)} señales para {strategy_id}")
+                for sig in signals:
+                    await self.order_simulator.process_signal(sig)
+            
+            # 5. Publicar
+            for sig in signals:
+                await self._publish_signal(sig)
+                
+            logger.info(f"END: Estrategia {strategy_id} finalizada. {len(signals)} señales.")
+            
+        except Exception as e:
+            logger.error(f"Error ejecutando single strategy {strategy_id}: {e}", exc_info=True)
+            
+        return generated_signals
+
     async def run_cycle(self) -> list[Signal]:
         """
         Ejecutar un ciclo completo de análisis.
@@ -78,7 +168,7 @@ class StrategyRunner:
         Returns:
             Lista de señales generadas en este ciclo
         """
-        cycle_start = datetime.utcnow()
+        cycle_start = datetime.now(timezone.utc)
         all_signals: list[Signal] = []
         
         try:
@@ -92,7 +182,10 @@ class StrategyRunner:
                 f"(confianza: {regime_confidence:.2f})"
             )
             
-            # 2. Obtener estrategias activas para este régimen
+            # 2. Actualizar universo si es necesario (una vez al día)
+            await self._update_universe_if_needed(regime)
+            
+            # 3. Obtener estrategias activas para este régimen
             active_strategies = StrategyRegistry.get_active_for_regime(
                 regime,
                 self.config.config
@@ -107,15 +200,18 @@ class StrategyRunner:
                 f"{[s.strategy_id for s in active_strategies]}"
             )
             
-            # 3. Obtener datos de mercado
+            # 4. Inyectar universo dinámico a las estrategias
+            self._inject_universe_to_strategies(active_strategies)
+            
+            # 5. Obtener datos de mercado
             symbols = self._get_all_symbols(active_strategies)
             market_data = await self._get_market_data(symbols)
             
-            # 4. Obtener posiciones actuales
+            # 6. Obtener posiciones actuales
             positions = await self._get_current_positions()
             capital = await self._get_available_capital()
             
-            # 5. Construir contexto
+            # 7. Construir contexto
             context = MarketContext(
                 regime=regime,
                 regime_confidence=regime_confidence,
@@ -125,17 +221,17 @@ class StrategyRunner:
                 positions=positions,
             )
             
-            # 6. Ejecutar cada estrategia
+            # 8. Ejecutar cada estrategia
             for strategy in active_strategies:
                 try:
                     # Generar señales de entrada
-                    signals = strategy.generate_signals(context)
+                    signals = await strategy.generate_signals(context)
                     all_signals.extend(signals)
                     
                     # Evaluar cierres de posiciones existentes
                     for position in positions:
                         if position.strategy_id == strategy.strategy_id:
-                            close_signal = strategy.should_close(position, context)
+                            close_signal = await strategy.should_close(position, context)
                             if close_signal:
                                 all_signals.append(close_signal)
                     
@@ -145,16 +241,16 @@ class StrategyRunner:
                         exc_info=True
                     )
             
-            # 7. Publicar señales
+            # 9. Publicar señales
             for signal in all_signals:
                 await self._publish_signal(signal)
             
-            # 8. Actualizar métricas
+            # 10. Actualizar métricas
             self._signals_generated += len(all_signals)
             self._cycles_completed += 1
-            self._last_run = datetime.utcnow()
+            self._last_run = datetime.now(timezone.utc)
             
-            cycle_duration = (datetime.utcnow() - cycle_start).total_seconds()
+            cycle_duration = (datetime.now(timezone.utc) - cycle_start).total_seconds()
             logger.info(
                 f"Ciclo completado en {cycle_duration:.2f}s, "
                 f"{len(all_signals)} señales generadas"
@@ -164,6 +260,61 @@ class StrategyRunner:
             logger.error(f"Error en ciclo de estrategias: {e}", exc_info=True)
         
         return all_signals
+    
+    async def _update_universe_if_needed(self, regime: MarketRegime) -> None:
+        """
+        Actualizar universo de símbolos si es necesario.
+        
+        El screening se ejecuta una vez al día, típicamente en el primer
+        ciclo del día.
+        """
+        if not self.universe_manager:
+            return
+        
+        today = date.today()
+        
+        # Ya actualizamos hoy?
+        if self._last_universe_update == today:
+            return
+        
+        logger.info("Ejecutando screening diario del universo...")
+        
+        try:
+            universe = await self.universe_manager.run_daily_screening(regime)
+            self._last_universe_update = today
+            
+            logger.info(
+                f"Universo actualizado: {len(universe.active_symbols)} símbolos activos "
+                f"(régimen: {regime.value})"
+            )
+        except Exception as e:
+            logger.error(f"Error actualizando universo: {e}")
+    
+    def _inject_universe_to_strategies(self, strategies) -> None:
+        """
+        Inyectar símbolos del universo activo a las estrategias.
+        
+        Las estrategias que tienen método set_universe() recibirán
+        los símbolos dinámicos del UniverseManager.
+        """
+        if not self.universe_manager:
+            return
+        
+        active_symbols = self.universe_manager.active_symbols
+        if not active_symbols:
+            logger.warning("No hay símbolos activos en el universo")
+            return
+        
+        for strategy in strategies:
+            if hasattr(strategy, 'set_universe'):
+                # Filtrar símbolos relevantes para esta estrategia
+                # Por ahora, pasamos todos. En el futuro podríamos
+                # filtrar por asset_type, market, etc.
+                strategy.set_universe(active_symbols)
+                logger.debug(
+                    f"Inyectados {len(active_symbols)} símbolos "
+                    f"a {strategy.strategy_id}"
+                )
     
     async def start(self, interval_seconds: int = 300):
         """
@@ -297,7 +448,11 @@ class StrategyRunner:
         """Obtener todos los símbolos de todas las estrategias."""
         symbols = set()
         for strategy in strategies:
-            symbols.update(strategy.symbols)
+            # Usar active_symbols que incluye dinámicos si están
+            if hasattr(strategy, 'active_symbols'):
+                symbols.update(strategy.active_symbols)
+            else:
+                symbols.update(strategy.symbols)
         return list(symbols)
     
     async def _publish_signal(self, signal: Signal):
@@ -317,10 +472,23 @@ class StrategyRunner:
     
     def get_metrics(self) -> dict:
         """Obtener métricas del runner."""
-        return {
+        metrics = {
             "running": self._running,
             "last_run": self._last_run.isoformat() if self._last_run else None,
             "signals_generated_total": self._signals_generated,
             "cycles_completed": self._cycles_completed,
             "registered_strategies": StrategyRegistry.get_info(),
         }
+        
+        # Añadir métricas del UniverseManager si está disponible
+        if self.universe_manager:
+            metrics["universe"] = {
+                "enabled": True,
+                "last_update": self._last_universe_update.isoformat() if self._last_universe_update else None,
+                "active_symbols_count": len(self.universe_manager.active_symbols),
+                "screening_summary": self.universe_manager.get_screening_summary(),
+            }
+        else:
+            metrics["universe"] = {"enabled": False}
+        
+        return metrics

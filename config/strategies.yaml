@@ -89,11 +89,54 @@ strategies:
       max_exposure_pct: 0.10
       force_close_minutes_before: 15
 
+  # HMM Rules Strategy (Fase 2.1)
+  hmm_rules:
+    enabled: true
+    description: "Estrategia sistemática basada en régimen HMM"
+    
+    markets:
+      - US
+    
+    required_regime:
+      - BULL
+      - SIDEWAYS
+    
+    # Reglas específicas por régimen
+    rules:
+      bull:
+        rsi_entry_threshold: 60
+        position_size_pct: 0.05
+        stop_loss_pct: 0.03
+        take_profit_pct: 0.06
+      
+      sideways:
+        rsi_buy_threshold: 30
+        rsi_sell_threshold: 70
+        position_size_pct: 0.03
+        stop_loss_pct: 0.02
+        take_profit_pct: 0.04
+    
+    risk:
+      max_positions: 5
+      min_risk_reward: 1.5
+
+    # Schedule: Cada 1 hora durante mercado
+    schedule:
+      type: "cron"
+      days: "mon-fri"
+      time: "10:00" # Ejecutar a las 10:00 UTC (ejemplo)
+      # Nota: Para testing en loop usaremos interval en runner manual, pero esto config scheduler
+
   # AI Agent Swing (Fase B2)
   ai_agent_swing:
     enabled: true
     description: "Agente IA para swing trading"
     
+    # Schedule: Revisión cada 4 horas
+    schedule: 
+      type: "interval"
+      hours: 4
+
     autonomy_level: conservative
     agent_config:
       provider: "claude"

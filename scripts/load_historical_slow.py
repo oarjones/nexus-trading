@@ -90,7 +90,7 @@ def main():
             
             # Step 1: Download OHLCV
             print(f"  → Downloading from Yahoo Finance...")
-            df = yahoo.get_historical(
+            df = yahoo._get_historical_sync(
                 symbol.ticker,
                 start=start_date,
                 end=end_date,

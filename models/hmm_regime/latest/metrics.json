@@ -1,0 +1,16 @@
+{
+  "n_samples": 2492,
+  "n_features": 4,
+  "n_states": 4,
+  "converged": true,
+  "n_iter_actual": 53,
+  "log_likelihood": -9480.444721627116,
+  "aic": 19102.889443254233,
+  "bic": 19516.169145727654,
+  "state_distribution": {
+    "BEAR": 470,
+    "BULL": 702,
+    "SIDEWAYS": 1069,
+    "VOLATILE": 251
+  }
+}

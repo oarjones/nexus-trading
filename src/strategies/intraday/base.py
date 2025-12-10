@@ -121,7 +121,7 @@ class IntraDayStrategy(TradingStrategy, IntraDayMixin):
         
         return True, "OK"
     
-    def generate_signals(
+    async def generate_signals(
         self,
         context: Any  # MarketContext
     ) -> List[Signal]:
@@ -179,7 +179,7 @@ class IntraDayStrategy(TradingStrategy, IntraDayMixin):
         """
         pass
     
-    def should_close(
+    async def should_close(
         self,
         position: Any, # PositionInfo
         context: Any   # MarketContext

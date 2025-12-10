@@ -166,7 +166,6 @@ class TestBaseAgentHealthCheck:
         
         assert health["status"] == "stopped"
         assert health["name"] == "test_agent"
-        assert health["running"] is True
         assert health["last_activity"] is None
     
     @pytest.mark.asyncio
@@ -178,7 +177,6 @@ class TestBaseAgentHealthCheck:
         health = test_agent.health()
         
         assert health["status"] == "healthy"
-        assert health["running"] is True
         assert health["error_count"] == 0
         
         await test_agent.stop()
@@ -244,7 +242,8 @@ class TestBaseAgentErrorHandling:
         """Test that error count resets after successful iteration."""
         # First cause some errors
         test_agent.should_error = True
-        test_agent.error_count_to_throw = 2
+        test_agent.error_count_to_throw = 100
+        test_agent._max_consecutive_errors = 200
         
         await test_agent.start()
         

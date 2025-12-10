@@ -6,7 +6,7 @@ y generar objetos Signal.
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional, Any
 import uuid
@@ -85,7 +85,7 @@ class Signal:
     metadata: dict = field(default_factory=dict)
     
     # Timestamps
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     expires_at: Optional[datetime] = None  # None = no expira
     
     def __post_init__(self):
@@ -108,7 +108,7 @@ class Signal:
         """Verificar si la señal ha expirado."""
         if self.expires_at is None:
             return False
-        return datetime.utcnow() > self.expires_at
+        return datetime.now(timezone.utc) > self.expires_at
     
     def risk_reward_ratio(self) -> Optional[float]:
         """Calcular ratio riesgo/beneficio."""
@@ -183,7 +183,7 @@ class PositionInfo:
     
     def holding_hours(self) -> float:
         """Horas desde apertura."""
-        delta = datetime.utcnow() - self.opened_at
+        delta = datetime.now(timezone.utc) - self.opened_at.replace(tzinfo=timezone.utc)
         return delta.total_seconds() / 3600
 
 
@@ -208,7 +208,7 @@ class MarketContext:
     positions: list[PositionInfo]
     
     # Metadatos
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class TradingStrategy(ABC):
@@ -294,7 +294,7 @@ class TradingStrategy(ABC):
         return current_regime in self.required_regime
     
     @abstractmethod
-    def generate_signals(self, context: MarketContext) -> list[Signal]:
+    async def generate_signals(self, context: MarketContext) -> list[Signal]:
         """
         Generar señales de trading basadas en el contexto actual.
         
@@ -317,7 +317,7 @@ class TradingStrategy(ABC):
         pass
     
     @abstractmethod
-    def should_close(
+    async def should_close(
         self, 
         position: PositionInfo, 
         context: MarketContext
