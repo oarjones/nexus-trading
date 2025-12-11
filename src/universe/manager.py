@@ -18,6 +18,7 @@ from typing import Optional, Protocol
 from enum import Enum
 import logging
 import json
+from pathlib import Path
 
 from ..data.symbols import SymbolRegistry, Symbol
 from ..strategies.interfaces import MarketRegime
@@ -214,6 +215,9 @@ class UniverseManager:
         self.db_pool = db_pool
         self.config = {**self.DEFAULT_CONFIG, **(config or {})}
         
+        # Archivo de estado para Dashboard (DOC-07)
+        self.state_file = Path("data/active_universe.json")
+        
         # Estado actual
         self._current_universe: Optional[DailyUniverse] = None
         self._pending_suggestions: list[AISuggestion] = []
@@ -222,6 +226,53 @@ class UniverseManager:
             f"UniverseManager initialized with {self.registry.count()} "
             f"symbols in master universe"
         )
+
+    async def save_state(self, regime: MarketRegime):
+        """
+        Persistir estado del universo activo para el Dashboard.
+        
+        CRÍTICO: Este método permite que el Dashboard (proceso separado)
+        vea el resultado del screening.
+        """
+        if not self._current_universe:
+            return
+
+        u = self._current_universe
+        
+        # Helper para contar por filtro
+        # Nota: pasamos los counts ya calculados en el objeto daily universe
+        
+        state = {
+            "screening_timestamp": u.screened_at.isoformat(),
+            "regime_used": regime.value,
+            "master_universe_count": u.master_universe_size,
+            "filters_applied": {
+                "liquidity_passed": u.passed_liquidity,
+                "trend_passed": u.passed_trend,
+                "volatility_passed": len(u.active_symbols), # aprox, es el final
+                "final_count": len(u.active_symbols),
+            },
+            "active_symbols": [
+                {
+                    "ticker": sym,
+                    "name": self.registry.get_by_ticker(sym).name if self.registry.get_by_ticker(sym) else sym,
+                    "sector": self.registry.get_by_ticker(sym).sector if self.registry.get_by_ticker(sym) else "Unknown",
+                    "liquidity_tier": self.registry.get_by_ticker(sym).liquidity_tier if self.registry.get_by_ticker(sym) else 3,
+                    # Por ahora no guardamos precios aquí, el dashboard puede obtenerlos si los necesita
+                    # o podríamos cachedarlos durante el screening si fuera necesario
+                }
+                for sym in u.active_symbols
+            ],
+            "excluded_reasons": {} # Por implementar si queremos detalle de exclusión
+        }
+        
+        try:
+            self.state_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(self.state_file, 'w') as f:
+                json.dump(state, f, indent=2)
+            logger.info(f"Universe state saved to {self.state_file}")
+        except Exception as e:
+            logger.error(f"Error saving universe state: {e}")
     
     @property
     def active_symbols(self) -> list[str]:
@@ -314,11 +365,14 @@ class UniverseManager:
             ai_removals=ai_removals,
         )
         
-        # 7. Persistir
+        # 7. Persistir persistencia en BD (opcional)
         if self.db_pool:
             await self._persist_universe(universe)
+            
+        # 8. Persistir estado para Dashboard (CRÍTICO)
+        await self.save_state(regime)
         
-        # 8. Limpiar sugerencias procesadas
+        # 9. Limpiar sugerencias procesadas
         self._pending_suggestions.clear()
         
         # 9. Actualizar estado

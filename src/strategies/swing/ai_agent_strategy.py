@@ -25,6 +25,9 @@ from src.agents.mcp_client import MCPClient, MCPServers
 
 from src.trading.paper import PaperPortfolioManager, PaperPortfolioProvider
 
+# Type check import
+from src.trading.paper.provider import PortfolioProvider
+
 logger = logging.getLogger(__name__)
 
 
@@ -47,16 +50,43 @@ class AIAgentStrategy(TradingStrategy):
         self.mcp_client = MCPClient()
         self.mcp_servers = MCPServers.from_env()
         
-        # Initialize Portfolio Provider (Paper Trading for MVP)
-        # TODO: Switch to LivePortfolioProvider based on config/mode
-        self.portfolio_manager = PaperPortfolioManager()
-        self.portfolio_provider = PaperPortfolioProvider(self.portfolio_manager, self.strategy_id)
+        # Initialize MCP
+        self.mcp_client = MCPClient()
+        self.mcp_servers = MCPServers.from_env()
         
-        self.context_builder = ContextBuilder(
+        # Portfolio Provider Injection
+        # Default to None, will be injected by StrategyRunner or create fallback
+        self.portfolio_provider = None
+        
+        # Fallback ContextBuilder pending provider injection
+        self._context_builder = None
+
+    def set_portfolio_provider(self, provider: PortfolioProvider):
+        """Inject dependency."""
+        self.portfolio_provider = provider
+        # Re-init context builder with correct provider
+        self._context_builder = ContextBuilder(
             portfolio_provider=self.portfolio_provider,
             mcp_client=self.mcp_client, 
             servers_config=self.mcp_servers
         )
+
+    @property
+    def context_builder(self):
+        if not self._context_builder:
+            # Fallback for testing or standalone usage (avoid if possible)
+            if not self.portfolio_provider:
+                 # TODO: Remove this fallback in Prod to ensure Source of Truth
+                 logger.warning("Using fallback internal PortfolioProvider for AIAgentStrategy")
+                 self.portfolio_manager = PaperPortfolioManager()
+                 self.portfolio_provider = PaperPortfolioProvider(self.portfolio_manager, self.strategy_id)
+            
+            self._context_builder = ContextBuilder(
+                portfolio_provider=self.portfolio_provider,
+                mcp_client=self.mcp_client,
+                servers_config=self.mcp_servers
+            )
+        return self._context_builder
         
         # Estado
         self._last_decision = None

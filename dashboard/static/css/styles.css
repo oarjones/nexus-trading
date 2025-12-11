@@ -1,0 +1,13 @@
+/* Custom styles complementing Pico.css */
+
+.grid-col-2 {
+    grid-column: span 2;
+}
+
+table {
+    font-size: 0.9em;
+}
+
+td, th {
+    padding: 0.5rem;
+}

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Trading Dashboard</title>
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <!-- Simple CSS Framework (e.g. Pico.css or custom) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <style>
+        :root {
+            --primary: #00acc1;
+            --background: #101820;
+            --card-bg: #1f2933;
+            --text-main: #e0e0e0;
+        }
+        body {
+            background-color: var(--background);
+            color: var(--text-main);
+        }
+        article {
+            background-color: var(--card-bg);
+            border: 1px solid #333;
+        }
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        .status-ok { background-color: #4caf50; }
+        .status-error { background-color: #f44336; }
+        .status-warn { background-color: #ff9800; }
+        .status-inactive { background-color: #9e9e9e; }
+    </style>
+</head>
+<body>
+    <nav class="container-fluid">
+        <ul>
+            <li><strong>Nexus Trading</strong></li>
+        </ul>
+        <ul>
+            <li><a href="#" role="button" class="outline">Dashboard</a></li>
+            <li><a href="#" role="button" class="outline secondary">Config</a></li>
+        </ul>
+    </nav>
+
+    <main class="container-fluid">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="container">
+        <small>Nexus Trading MVP &bull; Strategy Lab</small>
+    </footer>
+</body>
+</html>

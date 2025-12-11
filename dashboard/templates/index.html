@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="grid">
+    <!-- Status & Cost Block -->
+    <div class="grid-col">
+        <div hx-get="/components/status" hx-trigger="load, every 5s" hx-target="this" hx-swap="outerHTML">
+            <article aria-busy="true">Loading System Status...</article>
+        </div>
+        
+        <!-- Cost Summary (embedded directly or component) -->
+        <article>
+            <header>AI Resource Usage (Today)</header>
+            <div class="grid">
+                <div>
+                    <h4 style="margin-bottom:0">${{ "%.4f"|format(costs.total_cost_usd or 0) }}</h4>
+                    <small>Est. Cost</small>
+                </div>
+                <div>
+                    <h4 style="margin-bottom:0">{{ costs.total_tokens or 0 }}</h4>
+                    <small>Tokens</small>
+                </div>
+                <div>
+                    <h4 style="margin-bottom:0">{{ costs.total_searches or 0 }}</h4>
+                    <small>Searches</small>
+                </div>
+            </div>
+        </article>
+    </div>
+
+    <!-- Active Universe -->
+    <div class="grid-col">
+        <div hx-get="/components/universe" hx-trigger="load, every 30s" hx-target="this" hx-swap="outerHTML">
+            <article aria-busy="true">Loading Universe...</article>
+        </div>
+    </div>
+</div>
+
+<div class="grid">
+    <!-- Signals Feed -->
+    <div class="grid-col-2">
+        <div hx-get="/components/signals" hx-trigger="load, every 10s" hx-target="this" hx-swap="outerHTML">
+             <article aria-busy="true">Loading Signals...</article>
+        </div>
+    </div>
+
+    <!-- Logs Panel -->
+    <div class="grid-col">
+        <div hx-get="/components/logs" hx-trigger="load, every 5s" hx-target="this" hx-swap="outerHTML">
+             <article aria-busy="true">Loading Logs...</article>
+        </div>
+    </div>
+</div>
+{% endblock %}

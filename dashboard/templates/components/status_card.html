@@ -1,0 +1,35 @@
+<article>
+    <header>
+        <span class="status-indicator {{ 'status-ok' if status.is_running else 'status-error' }}"></span>
+        Strategy Lab Status
+        {% if not status.is_running %}
+            <small style="color:red">(OFFLINE)</small>
+        {% endif %}
+    </header>
+    
+    <div class="grid">
+        <!-- Market Context -->
+        <div>
+            <strong>Regime</strong>: 
+            <mark>{{ status.regime.current|default('UNKNOWN') }}</mark>
+            <br>
+            <small>Confidence: {{ "%.2f"|format(status.regime.confidence|default(0)) }}</small>
+        </div>
+        
+        <!-- Scheduler Info -->
+        <div>
+            <strong>Next Run</strong>:
+            <br>
+            <small>{{ status.scheduler.next_hmm_rules|default('Pending...') }}</small>
+        </div>
+    </div>
+    
+    <footer style="margin-top: 10px; font-size: 0.8em;">
+        Uptime: {{ (status.uptime_seconds|default(0) / 3600)|round(1) }}h
+        &nbsp;&bull;&nbsp;
+        Errors (1h): {{ status.errors_last_hour|default(0) }}
+    </footer>
+    
+    <!-- HTMX Polling container to refresh this card -->
+    <div hx-get="/components/status" hx-trigger="every 10s" hx-target="this" hx-swap="outerHTML" style="display:none"></div>
+</article>

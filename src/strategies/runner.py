@@ -14,6 +14,8 @@ import asyncio
 from datetime import datetime, date, timezone
 from typing import Optional
 import logging
+import json
+from pathlib import Path
 
 from .interfaces import (
     Signal,
@@ -58,7 +60,9 @@ class StrategyRunner:
         message_bus = None,   # Bus para publicar señales (opcional)
         db_session = None,    # Sesión de BD para posiciones
         config_path: str = None,
+        config_path: str = None,
         universe_manager = None,  # UniverseManager (opcional)
+        status_writer = None,     # StatusWriter (opcional)
     ):
         """
         Inicializar runner.
@@ -74,7 +78,10 @@ class StrategyRunner:
         self.bus = message_bus
         self.db = db_session
         self.config = get_strategy_config(config_path)
+        self.config = get_strategy_config(config_path)
         self.universe_manager = universe_manager
+        self.status_writer = status_writer
+        self.signals_cache_file = Path("data/signals_cache.json")
         
         self._running = False
         self._last_run: Optional[datetime] = None
@@ -200,8 +207,8 @@ class StrategyRunner:
                 f"{[s.strategy_id for s in active_strategies]}"
             )
             
-            # 4. Inyectar universo dinámico a las estrategias
-            self._inject_universe_to_strategies(active_strategies)
+            # 4. Inyectar dependencias (Universo, Portfolio)
+            self._inject_dependencies(active_strategies)
             
             # 5. Obtener datos de mercado
             symbols = self._get_all_symbols(active_strategies)
@@ -256,11 +263,44 @@ class StrategyRunner:
                 f"{len(all_signals)} señales generadas"
             )
             
+            # 11. Cachear señales para dashboard (DOC-07)
+            await self._persist_signals_cache(all_signals)
+            
+            # 12. Actualizar status writer
+            if self.status_writer:
+                self.status_writer.record_execution("orchestrator", len(all_signals))
+            
         except Exception as e:
             logger.error(f"Error en ciclo de estrategias: {e}", exc_info=True)
+            if self.status_writer:
+                self.status_writer.increment_error()
         
         return all_signals
     
+    async def _persist_signals_cache(self, signals: list[Signal]):
+        """Persist generated signals to JSON for Dashboard."""
+        if not signals:
+            return
+            
+        try:
+            # Load existing if any to keep history tailored?
+            # For MVP just Overwrite execution snapshots or Append?
+            # DOC-07 implies recent signals. We'll overwrite with latest batch + keep some history if feasible.
+            # Simplified: Overwrite with current batch for instant feedback.
+            
+            data = {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "count": len(signals),
+                "signals": [s.to_dict() for s in signals]
+            }
+            
+            self.signals_cache_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(self.signals_cache_file, 'w') as f:
+                json.dump(data, f, indent=2)
+                
+        except Exception as e:
+            logger.error(f"Error persisting signals cache: {e}")
+
     async def _update_universe_if_needed(self, regime: MarketRegime) -> None:
         """
         Actualizar universo de símbolos si es necesario.
@@ -290,31 +330,30 @@ class StrategyRunner:
         except Exception as e:
             logger.error(f"Error actualizando universo: {e}")
     
-    def _inject_universe_to_strategies(self, strategies) -> None:
+    def _inject_dependencies(self, strategies) -> None:
         """
-        Inyectar símbolos del universo activo a las estrategias.
-        
-        Las estrategias que tienen método set_universe() recibirán
-        los símbolos dinámicos del UniverseManager.
+        Inyectar dependencias (Universe, Portfolio) a las estrategias.
         """
-        if not self.universe_manager:
-            return
-        
-        active_symbols = self.universe_manager.active_symbols
-        if not active_symbols:
-            logger.warning("No hay símbolos activos en el universo")
-            return
-        
         for strategy in strategies:
-            if hasattr(strategy, 'set_universe'):
-                # Filtrar símbolos relevantes para esta estrategia
-                # Por ahora, pasamos todos. En el futuro podríamos
-                # filtrar por asset_type, market, etc.
-                strategy.set_universe(active_symbols)
-                logger.debug(
-                    f"Inyectados {len(active_symbols)} símbolos "
-                    f"a {strategy.strategy_id}"
-                )
+            # 1. Inyectar Universe
+            if self.universe_manager and hasattr(strategy, 'set_universe'):
+                active_symbols = self.universe_manager.active_symbols
+                if active_symbols:
+                    strategy.set_universe(active_symbols)
+                    
+            # 2. Inyectar Portfolio Provider (Si está disponible en Runner)
+            if hasattr(self, 'portfolio_manager') and hasattr(strategy, 'set_portfolio_provider'):
+                # Crear provider wrapper si no existe
+                # Asumimos que StrategyRunner tiene un PortfolioManager (Paper o Live)
+                # En este MVP es paper
+                from src.trading.paper.provider import PaperPortfolioProvider
+                provider = PaperPortfolioProvider(self.portfolio_manager, strategy.strategy_id)
+                strategy.set_portfolio_provider(provider)
+                logger.debug(f"Inyectado PortfolioProvider a {strategy.strategy_id}")
+
+    def _inject_universe_to_strategies(self, strategies) -> None:
+        # Deprecated by _inject_dependencies but kept for compatibility or routed
+        self._inject_dependencies(strategies)
     
     async def start(self, interval_seconds: int = 300):
         """

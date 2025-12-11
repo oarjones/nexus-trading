@@ -97,10 +97,10 @@ def main():
         X = df_features.values
         detector.fit(X)
         
-        # 5. Save
-        save_path = Path("models/hmm_spy_v1")
-        detector.save(str(save_path))
-        
+        # 6. Guardar modelo
+        # Cambiado a models/hmm_regime/latest para consistencia con sistema
+        save_path = "models/hmm_regime/latest"
+        detector.save(save_path)
         logger.info(f"Model successfully saved to {save_path}")
         
         # 6. Verify by loading

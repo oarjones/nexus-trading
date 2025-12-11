@@ -28,7 +28,7 @@ class CSVReporter:
             portfolio_data = []
             for strat_id, portfolio in portfolios.items():
                 # Asumimos que portfolio es PaperPortfolio (tiene to_dict o atributos)
-                val = portfolio.get_total_value({}) # Precio actual mockeado o no necesario si saved
+                val = portfolio.total_value # Precio actual mockeado o no necesario si saved
                 portfolio_data.append({
                     "strategy_id": strat_id,
                     "total_value": val,

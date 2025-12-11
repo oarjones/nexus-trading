@@ -21,8 +21,17 @@ from src.agents.llm.interfaces import (
     AutonomyLevel,
     MarketView,
 )
+from src.agents.llm.interfaces import (
+    LLMAgent,
+    AgentContext,
+    AgentDecision,
+    AutonomyLevel,
+    MarketView,
+)
 from src.strategies.interfaces import Signal, SignalDirection, MarketRegime
 from src.agents.llm.prompts import CONSERVATIVE_PROMPT, MODERATE_PROMPT
+from src.agents.llm.web_search import WebSearchClient
+from src.agents.llm.cost_tracker import get_cost_tracker
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +75,30 @@ class ClaudeAgent(LLMAgent):
         self._default_autonomy = default_autonomy
         self._timeout = timeout_seconds
         
+        # Tools initialization
+        self.search_client = WebSearchClient()
+        self.cost_tracker = get_cost_tracker()
+        
+        # Tool definition
+        self.WEB_SEARCH_TOOL = {
+            "name": "web_search",
+            "description": "Search the web for current financial news, market sentiment, and analyst ratings. Use this when you need real-time data not present in your context.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Specific search query (e.g., 'AAPL earnings report Q3 2024 analysis')"
+                    },
+                    "reason": {
+                        "type": "string",
+                        "description": "Why you need this information"
+                    }
+                },
+                "required": ["query"]
+            }
+        }
+        
     @property
     def agent_id(self) -> str:
         return f"claude_agent_{self._model}"
@@ -98,37 +131,128 @@ class ClaudeAgent(LLMAgent):
         # 1. Seleccionar Prompt según autonomía
         system_prompt = self._get_system_prompt(context.autonomy_level)
         
-        # 2. Preparar mensaje de usuario con el contexto
-        user_message = context.to_prompt_text()
+        # 2. Preparar historial de mensajes
+        messages = [
+            {"role": "user", "content": context.to_prompt_text()}
+        ]
+        
+        search_count = 0
+        MAX_SEARCHES = 3  # DOC-07 limit
         
         try:
-            # 3. Llamada a la API
-            logger.info(f"Calling Claude ({self._model}) with context_id={context.context_id}")
-            
-            response = await self.client.messages.create(
-                model=self._model,
-                max_tokens=self._max_tokens,
-                temperature=self._temperature,
-                system=system_prompt,
-                messages=[
-                    {"role": "user", "content": user_message}
-                ],
-                timeout=self._timeout
-            )
-            
-            # 4. Parsear respuesta
-            content_text = response.content[0].text
-            parsed_json = self._extract_json(content_text)
-            
-            execution_time = int((time.time() - start_time) * 1000)
-            
-            # 5. Convertir a AgentDecision
-            return self._create_decision(
-                parsed_json, 
-                context, 
-                execution_time,
-                response.usage.output_tokens + response.usage.input_tokens
-            )
+            while True:
+                # 3. Llamada a la API
+                logger.info(f"Calling Claude ({self._model}) [Loop {search_count}]")
+                
+                # Check if we should disable tools (reached limit)
+                tools = [self.WEB_SEARCH_TOOL] if search_count < MAX_SEARCHES else []
+                
+                response = await self.client.messages.create(
+                    model=self._model,
+                    max_tokens=self._max_tokens,
+                    temperature=self._temperature,
+                    system=system_prompt,
+                    messages=messages,
+                    tools=tools,
+                    timeout=self._timeout
+                )
+                
+                # Track Cost
+                input_tokens = response.usage.input_tokens
+                output_tokens = response.usage.output_tokens
+                self.cost_tracker.track_llm_call(
+                    self.agent_id, self._model, input_tokens, output_tokens, 
+                    context=f"Loop {search_count}"
+                )
+                
+                # Process response
+                stop_reason = response.stop_reason
+                content_blocks = response.content
+                
+                # Add assistant response to history
+                # Convert blocks to simple list of dicts for message history
+                # We reuse the raw 'content' list from the response object which is compatible
+                messages.append({"role": "assistant", "content": content_blocks})
+                
+                # Check for Tool Use
+                tool_uses = [b for b in content_blocks if b.type == "tool_use"]
+                
+                if tool_uses:
+                    if search_count >= MAX_SEARCHES:
+                         # Should ideally not happen if we passed empty tools, but safety check
+                        logger.warning("Max searches reached, forcing stop.")
+                        break
+                        
+                    # Execute tools
+                    tool_results = []
+                    for tool_use in tool_uses:
+                        if tool_use.name == "web_search":
+                            query = tool_use.input.get("query")
+                            logger.info(f"Executing Web Search: {query}")
+                            
+                            # Track search cost
+                            self.cost_tracker.track_search(self.agent_id, 1, context=query)
+                            
+                            # Execute search
+                            results = await self.search_client.search(query)
+                            
+                            # Format result
+                            result_text = "No results found."
+                            if results:
+                                result_text = "\n".join([r.to_string() for r in results])
+                                
+                            tool_results.append({
+                                "type": "tool_result",
+                                "tool_use_id": tool_use.id,
+                                "content": result_text
+                            })
+                            search_count += 1
+                            
+                    # Add tool results to history
+                    if tool_results:
+                        messages.append({"role": "user", "content": tool_results})
+                        # Continue loop to let Claude process results
+                        continue
+                
+                # If no tool use or done tools, we expect the JSON decision
+                # Look for text content
+                text_content = next((b.text for b in content_blocks if b.type == "text"), "")
+                
+                if not text_content and not tool_uses:
+                    # Should not happen
+                    raise ValueError("Empty response from Claude")
+                
+                # Try to parse JSON from the final text response
+                if text_content:
+                    try:
+                        parsed_json = self._extract_json(text_content)
+                        if parsed_json:
+                            execution_time = int((time.time() - start_time) * 1000)
+                            # We estimate total tokens loosely as sum of last call (accurate enough for now)
+                            total_tokens = response.usage.input_tokens + response.usage.output_tokens
+                            
+                            return self._create_decision(
+                                parsed_json, 
+                                context, 
+                                execution_time,
+                                total_tokens
+                            )
+                    except ValueError:
+                         # If we can't parse JSON but stopped, maybe it just chatted?
+                         pass
+                
+                # If we are here, we might need to prompt it to finalize?
+                # Or maybe it outputted text without JSON.
+                if stop_reason == "end_turn" and not tool_uses:
+                     # Force JSON extraction from what we have
+                     parsed_json = self._extract_json(text_content)
+                     execution_time = int((time.time() - start_time) * 1000)
+                     return self._create_decision(
+                        parsed_json, 
+                        context, 
+                        execution_time,
+                        response.usage.output_tokens + response.usage.input_tokens
+                    )
             
         except Exception as e:
             logger.error(f"Error in ClaudeAgent.decide: {e}")
