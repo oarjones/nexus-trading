@@ -1,0 +1,14 @@
+{
+  "screening_timestamp": "2025-12-11T06:47:57.642980+00:00",
+  "regime_used": "BULL",
+  "master_universe_count": 5,
+  "filters_applied": {
+    "liquidity_passed": 5,
+    "trend_passed": 4,
+    "volatility_passed": 4,
+    "final_count": 4
+  },
+  "active_symbols": [
+    {
+      "ticker": "AAPL",
+      "name": 

@@ -50,9 +50,10 @@ def sample_context():
 async def test_decide_success(mock_anthropic, sample_context):
     # Mock response
     mock_response = MagicMock()
-    mock_response.content = [MagicMock(text="""
-    ```json
-    {
+    # Mock ContentBlock
+    text_block = MagicMock()
+    text_block.type = "text"
+    text_block.text = """{
         "market_view": "bullish",
         "confidence": 0.85,
         "reasoning": "Test reasoning",
@@ -68,9 +69,8 @@ async def test_decide_success(mock_anthropic, sample_context):
             }
         ],
         "warnings": []
-    }
-    ```
-    """)]
+    }"""
+    mock_response.content = [text_block]
     mock_response.usage.input_tokens = 100
     mock_response.usage.output_tokens = 50
     

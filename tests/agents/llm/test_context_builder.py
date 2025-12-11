@@ -20,6 +20,8 @@ class MockMCPServers:
 class MockMCPClient:
     def __init__(self):
         self.call = AsyncMock()
+        self.get_portfolio_summary = AsyncMock()
+        self.get_portfolio_summary.return_value = MagicMock(total_value=25000.0)
 
 
 @pytest.fixture
@@ -101,7 +103,11 @@ def default_responses(server, tool, params):
 
 @pytest.mark.asyncio
 async def test_build_context_success(mock_mcp, mock_servers):
-    builder = ContextBuilder(mock_mcp, servers_config=mock_servers)
+    builder = ContextBuilder(
+        portfolio_provider=mock_mcp,
+        mcp_client=mock_mcp, 
+        servers_config=mock_servers
+    )
     
     context = await builder.build(
         symbols=["AAPL", "MSFT"],
@@ -126,7 +132,12 @@ async def test_build_context_partial_failure(mock_mcp, mock_servers):
     
     mock_mcp.call.side_effect = side_effect
     
-    builder = ContextBuilder(mock_mcp, servers_config=mock_servers)
+    # Pass mock_mcp as both provider and client since we combined mocks
+    builder = ContextBuilder(
+        portfolio_provider=mock_mcp, 
+        mcp_client=mock_mcp, 
+        servers_config=mock_servers
+    )
     
     context = await builder.build(
         symbols=["AAPL"],
@@ -134,6 +145,11 @@ async def test_build_context_partial_failure(mock_mcp, mock_servers):
     )
     
     # Debe usar default regime (UNCERTAIN due to fallback)
+    # The current implementation returns UNCERTAIN if get_regime fails safe
+    # But if partial failure logic in build() just logs and continues with partials?
+    # Inspecting ContextBuilder._get_regime_info line 131: returns UNCERTAIN on exception
+    # However, in test_context_builder_partial_failure we raise Exception only for "mock-ml"
+    
     assert context.regime.regime == "UNCERTAIN"
     assert context.regime.model_id == "fallback"
     
@@ -144,7 +160,11 @@ async def test_build_context_partial_failure(mock_mcp, mock_servers):
 
 @pytest.mark.asyncio
 async def test_caching(mock_mcp, mock_servers):
-    builder = ContextBuilder(mock_mcp, servers_config=mock_servers)
+    builder = ContextBuilder(
+        portfolio_provider=mock_mcp,
+        mcp_client=mock_mcp, 
+        servers_config=mock_servers
+    )
     
     # Primera llamada
     await builder.build(["AAPL"])
