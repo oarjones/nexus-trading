@@ -60,7 +60,6 @@ class StrategyRunner:
         message_bus = None,   # Bus para publicar señales (opcional)
         db_session = None,    # Sesión de BD para posiciones
         config_path: str = None,
-        config_path: str = None,
         universe_manager = None,  # UniverseManager (opcional)
         status_writer = None,     # StatusWriter (opcional)
     ):
@@ -77,7 +76,6 @@ class StrategyRunner:
         self.mcp = mcp_client
         self.bus = message_bus
         self.db = db_session
-        self.config = get_strategy_config(config_path)
         self.config = get_strategy_config(config_path)
         self.universe_manager = universe_manager
         self.status_writer = status_writer

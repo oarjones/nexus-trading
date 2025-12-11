@@ -21,13 +21,6 @@ from src.agents.llm.interfaces import (
     AutonomyLevel,
     MarketView,
 )
-from src.agents.llm.interfaces import (
-    LLMAgent,
-    AgentContext,
-    AgentDecision,
-    AutonomyLevel,
-    MarketView,
-)
 from src.strategies.interfaces import Signal, SignalDirection, MarketRegime
 from src.agents.llm.prompts import CONSERVATIVE_PROMPT, MODERATE_PROMPT
 from src.agents.llm.web_search import WebSearchClient

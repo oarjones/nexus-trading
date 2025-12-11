@@ -1,0 +1,25 @@
+{
+  "records": [
+    {
+      "timestamp": "2025-12-11T06:47:14.142777+00:00",
+      "event_type": "llm_call",
+      "agent_id": "claude_agent_claude-3-5-sonnet-20240620",
+      "model": "claude-3-5-sonnet-20240620",
+      "tokens": {
+        "input_tokens": 100,
+        "output_tokens": 50,
+        "model_id": "claude-3-5-sonnet-20240620"
+      },
+      "search_queries": 0,
+      "cost_usd": 0.0010500000000000002,
+      "context": "Loop 0"
+    }
+  ],
+  "summary": {
+    "total_cost_usd": 0.0010500000000000002,
+    "total_tokens": 150,
+    "total_searches": 0,
+    "total_records": 1,
+    "last_updated": "2025-12-11T06:47:14.142777+00:00"
+  }
+}

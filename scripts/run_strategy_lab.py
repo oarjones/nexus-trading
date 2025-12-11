@@ -44,7 +44,10 @@ class StrategyLab:
         
         # 2. Universe Manager
         self.registry = SymbolRegistry('config/symbols.yaml')
-        self.data_adapter = MCPDataProviderAdapter(self.mcp_client)
+        self.data_adapter = MCPDataProviderAdapter(
+            mcp_client=self.mcp_client,
+            servers_config=self.mcp_servers
+        )
         self.universe_manager = UniverseManager(
             registry=self.registry,
             data_provider=self.data_adapter
