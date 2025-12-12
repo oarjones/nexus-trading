@@ -20,8 +20,10 @@ import logging
 import json
 from pathlib import Path
 
+
 from ..data.symbols import SymbolRegistry, Symbol
 from ..strategies.interfaces import MarketRegime
+from src.shared.infrastructure.redis_client import get_redis_client
 
 logger = logging.getLogger(__name__)
 
@@ -218,6 +220,14 @@ class UniverseManager:
         # Archivo de estado para Dashboard (DOC-07)
         self.state_file = Path("data/active_universe.json")
         
+        # Redis Connection
+        try:
+            self.redis = get_redis_client()
+            logger.info("UniverseManager connected to Redis")
+        except Exception as e:
+            logger.error(f"UniverseManager failed to connect to Redis: {e}")
+            self.redis = None
+        
         # Estado actual
         self._current_universe: Optional[DailyUniverse] = None
         self._pending_suggestions: list[AISuggestion] = []
@@ -226,6 +236,17 @@ class UniverseManager:
             f"UniverseManager initialized with {self.registry.count()} "
             f"symbols in master universe"
         )
+
+    async def _save_to_redis(self, state: dict):
+        """Save universe state to Redis key 'nexus:universe:active'."""
+        if not self.redis:
+            return
+        try:
+            # We save the dict state which is already optimized for consumption
+            self.redis.set("nexus:universe:active", json.dumps(state))
+            logger.debug("Universe state saved to Redis")
+        except Exception as e:
+            logger.error(f"Failed to save universe to Redis: {e}")
 
     async def save_state(self, regime: MarketRegime):
         """
@@ -266,6 +287,10 @@ class UniverseManager:
             "excluded_reasons": {} # Por implementar si queremos detalle de exclusión
         }
         
+        # Write to Redis
+        await self._save_to_redis(state)
+        
+        # Write to File (Legacy/Backup)
         try:
             self.state_file.parent.mkdir(parents=True, exist_ok=True)
             with open(self.state_file, 'w') as f:

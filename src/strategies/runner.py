@@ -27,6 +27,9 @@ from .interfaces import (
 from .registry import StrategyRegistry
 from .config import get_strategy_config
 
+# Import strategies to ensure registration
+import src.strategies.swing.hmm_rules_strategy
+
 
 logger = logging.getLogger("strategy.runner")
 

@@ -81,7 +81,7 @@ class StrategyScheduler:
 
     async def _run_job_wrapper(self, strategy_id: str):
         """Wrapper para manejar ejecución de job."""
-        logger.info(f"⏰ Scheduler activado para: {strategy_id}")
+        logger.info(f"Scheduler activado para: {strategy_id}")
         await self.runner.run_single_strategy(strategy_id)
         
     def start(self):

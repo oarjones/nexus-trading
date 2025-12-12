@@ -5,29 +5,37 @@ This component periodically writes a JSON file that allows the separate
 Dashboard process to monitor the Strategy Lab status in real-time.
 """
 
+
 import json
 import asyncio
 import logging
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Optional, Dict
+
+from src.shared.infrastructure.redis_client import get_redis_client
 
 logger = logging.getLogger(__name__)
 
 
 class StatusWriter:
     """
-    Periodically writes system status to data/system_status.json.
+    Periodically writes system status to Redis (nexus:system:status).
     """
     
     def __init__(
         self,
-        output_file: str = "data/system_status.json",
-        interval_seconds: int = 30,
+        redis_key: str = "nexus:system:status",
+        interval_seconds: int = 1, # Faster updates for Redis
     ):
-        self.output_file = Path(output_file)
+        self.redis_key = redis_key
         self.interval_seconds = interval_seconds
-        self.output_file.parent.mkdir(parents=True, exist_ok=True)
+        
+        try:
+            self.redis = get_redis_client()
+            logger.info("StatusWriter connected to Redis")
+        except Exception as e:
+            logger.error(f"StatusWriter failed to connect to Redis: {e}")
+            self.redis = None
         
         # Internal state (updated by StrategyLab)
         self._start_time = datetime.now(timezone.utc)
@@ -49,7 +57,7 @@ class StatusWriter:
         """Start periodic writing."""
         self._is_running = True
         self._write_task = asyncio.create_task(self._write_loop())
-        logger.info(f"StatusWriter started, writing to {self.output_file}")
+        logger.info(f"StatusWriter started, writing to Redis key: {self.redis_key}")
     
     async def stop(self):
         """Stop writing and cleanup."""
@@ -61,8 +69,12 @@ class StatusWriter:
             except asyncio.CancelledError:
                 pass
         
-        # Write final stopped status
-        await self._write_status()
+        # Remove status key on clean stop (optional, or let TTL expire)
+        if self.redis:
+            try:
+                self.redis.delete(self.redis_key)
+            except Exception:
+                pass
         logger.info("StatusWriter stopped")
     
     async def _write_loop(self):
@@ -75,7 +87,10 @@ class StatusWriter:
             await asyncio.sleep(self.interval_seconds)
     
     async def _write_status(self):
-        """Write current state to file."""
+        """Write current state to Redis."""
+        if not self.redis:
+            return
+
         uptime = (datetime.now(timezone.utc) - self._start_time).total_seconds()
         
         status = {
@@ -98,10 +113,16 @@ class StatusWriter:
         }
         
         try:
-            with open(self.output_file, 'w') as f:
-                json.dump(status, f, indent=2)
+            # Write to Redis with 60s TTL (Expiration)
+            # This acts as a deadlock detector: if writer stops, key disappears after 60s
+            self.redis.setex(
+                self.redis_key,
+                60, 
+                json.dumps(status)
+            )
         except Exception as e:
-            logger.error(f"Failed to write system status: {e}")
+            logger.error(f"Failed to write system status to Redis: {e}")
+
 
     # Setters for external components to update state
     

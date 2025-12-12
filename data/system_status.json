@@ -1,7 +1,7 @@
 {
-  "timestamp": "2025-12-12T06:21:43.568840+00:00",
-  "is_running": true,
-  "uptime_seconds": 630,
+  "timestamp": "2025-12-12T06:41:45.336416+00:00",
+  "is_running": false,
+  "uptime_seconds": 1832,
   "regime": {
     "current": "UNKNOWN",
     "confidence": 0.0,

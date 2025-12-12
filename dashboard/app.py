@@ -39,6 +39,7 @@ async def dashboard_home(request: Request):
     status = data_service.get_system_status()
     universe = data_service.get_active_universe()
     costs = data_service.get_todays_costs()
+    pf_data = data_service.get_paper_portfolio()
     
     return templates.TemplateResponse(
         "index.html",
@@ -47,8 +48,10 @@ async def dashboard_home(request: Request):
             "status": status,
             "universe": universe,
             "costs": costs,
+            "portfolios": pf_data.get("portfolios", {})
         }
     )
+
 
 @app.get("/components/status")
 async def get_status_component(request: Request):
@@ -78,6 +81,7 @@ async def get_signals_component(request: Request):
         {"request": request, "signals": signals}
     )
 
+
 @app.get("/components/logs")
 async def get_logs_component(request: Request):
     """HTMX component: Logs."""
@@ -88,6 +92,52 @@ async def get_logs_component(request: Request):
         "components/logs_panel.html",
         {"request": request, "logs": logs}
     )
+
+# --- Dashboard 2.0 Endpoints ---
+
+@app.get("/components/portfolio_summary")
+async def get_portfolio_summary_component(request: Request):
+    """HTMX component: Global Portfolio Summary."""
+    pf_data = data_service.get_paper_portfolio()
+    status = data_service.get_system_status()
+    
+    # Calculate global totals
+    total_aum = 0.0
+    total_cash = 0.0
+    portfolios = pf_data.get("portfolios", {})
+    
+    for _, pf in portfolios.items():
+        total_aum += pf.get("total_value", 0)
+        total_cash += pf.get("cash", 0)
+        
+    return templates.TemplateResponse(
+        "components/portfolio_summary.html",
+        {
+            "request": request,             
+            "total_aum": total_aum,
+            "total_cash": total_cash,
+            "status": status,
+            "strategies_count": len(portfolios)
+        }
+    )
+
+@app.get("/components/strategy/{strategy_id}")
+async def get_strategy_card_component(request: Request, strategy_id: str):
+    """HTMX component: Individual Strategy Card."""
+    details = data_service.get_strategy_details(strategy_id)
+    if not details:
+        return HTMLResponse(f"Strategy {strategy_id} not found", status_code=404)
+        
+    return templates.TemplateResponse(
+        "components/strategy_card.html",
+        {"request": request, "strategy": details}
+    )
+
+@app.get("/api/history/{strategy_id}")
+async def get_strategy_history(strategy_id: str):
+    """JSON API: Get history for charting."""
+    return data_service.get_portfolio_history(strategy_id, days=7)
+
 
 if __name__ == "__main__":
     import uvicorn

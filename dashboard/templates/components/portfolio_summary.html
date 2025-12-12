@@ -1,0 +1,37 @@
+<article class="p-4 mb-4">
+    <header class="flex justify-between items-center mb-4">
+        <div>
+            <h2 class="mb-0">Global Portfolio</h2>
+            <small class="text-muted">{{ strategies_count }} Strategies Active</small>
+        </div>
+        <div class="text-right">
+            {% if status.is_running %}
+            <span class="badge bg-success" data-tooltip="System is running normally">● Online</span>
+            {% else %}
+            <span class="badge bg-danger" data-tooltip="System is offline or halted">● Offline</span>
+            {% endif %}
+            <br>
+            <small class="text-muted">Regime: {{ status.regime.current | default('UNKNOWN') }}</small>
+        </div>
+    </header>
+
+    <div class="grid">
+        <!-- AUM -->
+        <div class="text-center">
+            <h1>${{ "%.0f"|format(total_aum) }}</h1>
+            <small>Total AUM</small>
+        </div>
+
+        <!-- Cash -->
+        <div class="text-center">
+            <h3>${{ "%.0f"|format(total_cash) }}</h3>
+            <small>Total Cash</small>
+        </div>
+
+        <!-- Heartbeat -->
+        <div class="text-center">
+            <h3>{{ "%.0f"|format(status.uptime_seconds / 3600) }}h</h3>
+            <small>Uptime</small>
+        </div>
+    </div>
+</article>

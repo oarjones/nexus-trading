@@ -1,0 +1,84 @@
+<article class="strategy-card mb-4" id="card-{{ strategy.id }}">
+    <header class="flex justify-between items-center">
+        <div>
+            <h4 class="mb-0">{{ strategy.id }}</h4>
+            <small>{{ strategy.regime }}</small>
+        </div>
+        <div class="text-right">
+            <span class="{{ 'text-success' if strategy.metrics.total_return_pct >= 0 else 'text-danger' }}">
+                {{ "%.2f"|format(strategy.metrics.total_return_pct) }}%
+            </span>
+            <br>
+            <small>Return</small>
+        </div>
+    </header>
+
+    <div class="grid">
+        <!-- Key Metrics -->
+        <div>
+            <div class="grid small-metrics">
+                <div>
+                    <strong>NLV:</strong> ${{ "%.0f"|format(strategy.metrics.net_liquidation) }}
+                </div>
+                <div>
+                    <strong>Cash:</strong> ${{ "%.0f"|format(strategy.metrics.cash_balance) }}
+                </div>
+                <div>
+                    <strong>Inv:</strong> {{ "%.1f"|format(strategy.metrics.invested_pct) }}%
+                </div>
+            </div>
+
+            <!-- Positions Table -->
+            <table class="striped dense mt-2">
+                <thead>
+                    <tr>
+                        <th>Sym</th>
+                        <th>Qty</th>
+                        <th>Value</th>
+                        <th>PnL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pos in strategy.positions[:5] %}
+                    <tr>
+                        <td>{{ pos.symbol }}</td>
+                        <td>{{ pos.quantity }}</td>
+                        <td>${{ "%.0f"|format(pos.market_value) }}</td>
+                        <td class="{{ 'text-success' if pos.unrealized_pnl >= 0 else 'text-danger' }}">
+                            {{ "%.0f"|format(pos.unrealized_pnl) }}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="text-muted text-center">No positions</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% if strategy.positions|length > 5 %}
+            <small class="text-muted text-center block">...and {{ strategy.positions|length - 5 }} more</small>
+            {% endif %}
+        </div>
+
+        <!-- Chart -->
+        <div class="chart-container" style="position: relative; height:200px; width:100%">
+            <canvas id="chart-{{ strategy.id }}"></canvas>
+        </div>
+    </div>
+
+    <!-- Init Chart Script -->
+    <script>
+        (function () {
+            // Self-executing to avoid scope pollution
+            fetch('/api/history/{{ strategy.id }}')
+                .then(response => response.json())
+                .then(data => {
+                    const canvasId = 'chart-{{ strategy.id }}';
+                    if (data.history && data.history.length > 0) {
+                        renderEquityCurve(canvasId, data.history, '{{ strategy.id }} Equity');
+                    }
+                })
+                .catch(err => console.error('Error loading chart:', err));
+        })();
+    </script>
+</article>

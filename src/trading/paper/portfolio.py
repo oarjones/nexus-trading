@@ -1,10 +1,13 @@
+
 import json
 import logging
 from dataclasses import dataclass, field, asdict
 from typing import Dict, List, Optional, Any
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 import yaml
+
+from src.shared.infrastructure.database import get_db, PortfolioModel, PositionModel, PortfolioHistoryModel
 
 logger = logging.getLogger(__name__)
 
@@ -83,7 +86,7 @@ class PaperPortfolio:
                 symbol=symbol,
                 quantity=quantity,
                 avg_price=price,
-                entry_time=datetime.now(),
+                entry_time=datetime.now(timezone.utc),
                 current_price=price,
                 stop_loss=stop_loss,
                 take_profit=take_profit
@@ -148,13 +151,20 @@ class PaperPortfolio:
 
 
 class PaperPortfolioManager:
-    """Manages multiple paper portfolios with persistence."""
+    """Manages multiple paper portfolios with persistence (Postgres)."""
     
     def __init__(self, config_path: str = "config/paper_trading.yaml"):
         self.config_path = Path(config_path)
         self.portfolios: Dict[str, PaperPortfolio] = {}
         self.config = {}
-        self.persistence_path = Path("data/paper_portfolios.json")
+        
+        # Database connection
+        try:
+            self.db = get_db()
+            logger.info("PaperPortfolioManager connected to Database")
+        except Exception as e:
+            logger.error(f"PaperPortfolioManager failed to connect to DB: {e}")
+            self.db = None
         
         self._load_config()
         self._initialize_portfolios()
@@ -164,12 +174,6 @@ class PaperPortfolioManager:
         if self.config_path.exists():
             with open(self.config_path, 'r') as f:
                 self.config = yaml.safe_load(f) or {}
-                
-        # Update persistence path from config
-        if "persistence" in self.config:
-            p_path = self.config["persistence"].get("storage_path")
-            if p_path:
-                self.persistence_path = Path(p_path)
 
     def _initialize_portfolios(self):
         """Initialize portfolios from config if they don't exist."""
@@ -185,42 +189,109 @@ class PaperPortfolioManager:
     def get_portfolio(self, strategy_id: str) -> Optional[PaperPortfolio]:
         return self.portfolios.get(strategy_id)
 
-    def save_state(self):
-        """Save all portfolios to disk."""
-        try:
-            self.persistence_path.parent.mkdir(parents=True, exist_ok=True)
-            data = {sid: p.to_dict() for sid, p in self.portfolios.items()}
-            with open(self.persistence_path, 'w') as f:
-                json.dump(data, f, indent=2)
-            logger.info(f"Portfolios saved to {self.persistence_path}")
-        except Exception as e:
-            logger.error(f"Failed to save portfolios: {e}")
 
-    def load_state(self):
-        """Load portfolios from disk."""
-        if not self.persistence_path.exists():
-            logger.info("No saved portfolio state found, starting fresh.")
+    def save_state(self):
+        """
+        Save all portfolios to Postgres.
+        Also records history snapshot for charting.
+        """
+        if not self.db:
             return
 
+        session = self.db.get_session()
         try:
-            with open(self.persistence_path, 'r') as f:
-                data = json.load(f)
+            for strategy_id, pf in self.portfolios.items():
+                # 1. Upsert Portfolio (Current State)
+                db_pf = session.query(PortfolioModel).filter_by(strategy_id=strategy_id).first()
+                if not db_pf:
+                    db_pf = PortfolioModel(strategy_id=strategy_id)
+                    session.add(db_pf)
+                
+                db_pf.currency = pf.currency
+                db_pf.initial_capital = pf.initial_capital
+                db_pf.cash = pf.cash
+                db_pf.trades_count = pf.trades_count
+                db_pf.total_value = pf.total_value
+                # updated_at handled by DB/Model default
+                
+                # 2. Update Positions
+                session.query(PositionModel).filter_by(strategy_id=strategy_id).delete()
+                
+                for symbol, pos in pf.positions.items():
+                    db_pos = PositionModel(
+                        strategy_id=strategy_id,
+                        symbol=pos.symbol,
+                        quantity=pos.quantity,
+                        avg_price=pos.avg_price,
+                        current_price=pos.current_price,
+                        entry_time=pos.entry_time,
+                        stop_loss=pos.stop_loss,
+                        take_profit=pos.take_profit
+                    )
+                    session.add(db_pos)
+
+                # 3. Record History Snapshot (for Equity Curve)
+                # We record a snapshot every time we save state (e.g. daily or minutely)
+                # Ideally this is throttled, but for now we assume save_state is called reasonably.
+                history_entry = PortfolioHistoryModel(
+                    strategy_id=strategy_id,
+                    total_value=pf.total_value,
+                    cash=pf.cash
+                    # timestamp defaults to now
+                )
+                session.add(history_entry)
             
-            for sid, p_data in data.items():
-                if sid in self.portfolios:
-                    # Update existing initialized portfolio
-                    # Reuse from_dict logic but map to existing instance to preserve config? 
-                    # Simpler to replace or update fields.
-                    saved_pf = PaperPortfolio.from_dict(p_data)
-                    # We trust saved state for cash/positions
-                    self.portfolios[sid].cash = saved_pf.cash
-                    self.portfolios[sid].positions = saved_pf.positions
-                    self.portfolios[sid].trades_count = saved_pf.trades_count
-                else:
-                    # Load portfolio not in current config (maybe zombie)
-                    # We load it anyway to avoid data loss
-                    self.portfolios[sid] = PaperPortfolio.from_dict(p_data)
-                    
-            logger.info(f"Loaded {len(data)} portfolios from {self.persistence_path}")
+            session.commit()
+            logger.info("Portfolios state and history saved to Postgres")
         except Exception as e:
-            logger.error(f"Failed to load portfolios: {e}")
+            session.rollback()
+            logger.error(f"Failed to save portfolios/history to DB: {e}")
+        finally:
+            session.close()
+
+
+    def load_state(self):
+        """Load portfolios from Postgres."""
+        if not self.db:
+            return
+
+        session = self.db.get_session()
+        try:
+            db_portfolios = session.query(PortfolioModel).all()
+            if not db_portfolios:
+                logger.info("No saved portfolio state in DB, using initialized defaults.")
+                return
+
+            for db_pf in db_portfolios:
+                sid = db_pf.strategy_id
+                
+                # Get existing obj provided by config or create new if found in DB only
+                if sid in self.portfolios:
+                    pf = self.portfolios[sid]
+                else:
+                    pf = PaperPortfolio(sid, db_pf.initial_capital, db_pf.currency)
+                    self.portfolios[sid] = pf
+                
+                # Update state
+                pf.cash = db_pf.cash
+                pf.trades_count = db_pf.trades_count
+                
+                # Load Positions
+                pf.positions = {}
+                for db_pos in db_pf.positions:
+                    pf.positions[db_pos.symbol] = Position(
+                        symbol=db_pos.symbol,
+                        quantity=db_pos.quantity,
+                        avg_price=db_pos.avg_price,
+                        entry_time=db_pos.entry_time.replace(tzinfo=timezone.utc) if db_pos.entry_time.tzinfo is None else db_pos.entry_time,
+                        current_price=db_pos.current_price,
+                        stop_loss=db_pos.stop_loss,
+                        take_profit=db_pos.take_profit
+                    )
+            
+            logger.info(f"Loaded {len(db_portfolios)} portfolios from DB")
+        except Exception as e:
+            logger.error(f"Failed to load portfolios from DB: {e}")
+        finally:
+            session.close()
+
