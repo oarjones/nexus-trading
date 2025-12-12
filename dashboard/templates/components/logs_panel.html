@@ -1,12 +1,10 @@
-<article>
-    <header>System Logs</header>
-    <div
-        style="background-color: #000; color: #0f0; font-family: monospace; font-size: 0.8em; padding: 10px; height: 300px; overflow-y: auto; overflow-x: hidden;">
-        {% for log in logs %}
-        <div style="white-space: pre-wrap; margin-bottom: 2px;">{{ log }}</div>
-        {% endfor %}
-    </div>
-
-    <div hx-get="/components/logs" hx-trigger="every 5s" hx-target="this" hx-swap="outerHTML" style="display:none">
-    </div>
-</article>
+<div hx-get="/components/logs" hx-trigger="every 5s" hx-target="this" hx-swap="outerHTML">
+    <article>
+        <header>System Logs</header>
+        <div class="logs-container">
+            {% for log in logs %}
+            <div>{{ log }}</div>
+            {% endfor %}
+        </div>
+    </article>
+</div>

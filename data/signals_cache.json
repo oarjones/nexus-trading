@@ -1,0 +1,16 @@
+{
+  "timestamp": "2025-12-11T07:19:22.554840+00:00",
+  "count": 1,
+  "signals": [
+    {
+      "strategy_id": "ai_agent_swing",
+      "symbol": "NVDA",
+      "direction": "LONG",
+      "confidence": 0.85,
+      "entry_price": 875.5,
+      "stop_loss": 850.0,
+      "take_profit": 925.0,
+      "reasoning": "Strong momentum"
+    }
+  ]
+}

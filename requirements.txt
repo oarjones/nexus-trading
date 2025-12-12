@@ -33,7 +33,7 @@ yfinance>=0.2.33
 ib_insync>=0.9.86
 
 # Technical analysis
-git+https://github.com/twopirllc/pandas-ta.git@development
+pandas-ta
 
 # Progress bars
 tqdm>=4.66.0

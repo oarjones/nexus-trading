@@ -33,9 +33,9 @@ except ImportError:
     from mcp_servers.common.base_server import BaseMCPServer
 
 # Tool imports
-from tools.regime import handle_get_regime, get_regime_tool
-from tools.model_info import handle_get_model_info, handle_list_models
-from tools.health import handle_health_check
+from .tools.regime import handle_get_regime, get_regime_tool
+from .tools.model_info import handle_get_model_info, handle_list_models
+from .tools.health import handle_health_check
 
 
 class MLModelsServer(BaseMCPServer):

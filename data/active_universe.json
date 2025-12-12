@@ -1,14 +1,25 @@
 {
-  "screening_timestamp": "2025-12-11T06:47:57.642980+00:00",
+  "screening_timestamp": "2025-12-11T07:19:22.554840+00:00",
   "regime_used": "BULL",
-  "master_universe_count": 5,
+  "master_universe_count": 150,
   "filters_applied": {
-    "liquidity_passed": 5,
-    "trend_passed": 4,
-    "volatility_passed": 4,
-    "final_count": 4
+    "liquidity_passed": 120,
+    "trend_passed": 85,
+    "volatility_passed": 35,
+    "final_count": 35
   },
   "active_symbols": [
     {
-      "ticker": "AAPL",
-      "name": 
+      "ticker": "SPY",
+      "name": "SPDR S&P 500",
+      "sector": "broad_market",
+      "liquidity_tier": 1
+    },
+    {
+      "ticker": "QQQ",
+      "name": "Invesco NASDAQ-100",
+      "sector": "technology",
+      "liquidity_tier": 1
+    }
+  ]
+}

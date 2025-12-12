@@ -1,13 +1,180 @@
-/* Custom styles complementing Pico.css */
+/* Custom styles complementing Pico.css (Dark Mode Overrides) */
 
+:root {
+    --primary: #00acc1;
+    --primary-hover: #008394;
+    --background: #0f172a;
+    /* Slate 900 */
+    --card-bg: #1e293b;
+    /* Slate 800 */
+    --text-main: #f8fafc;
+    /* Slate 50 */
+    --text-muted: #94a3b8;
+    /* Slate 400 */
+    --border-color: #334155;
+    /* Slate 700 */
+    --success: #22c55e;
+    --error: #ef4444;
+    --warning: #f59e0b;
+}
+
+/* Base Overrides */
+body {
+    background-color: var(--background) !important;
+    color: var(--text-main) !important;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    color: var(--text-main) !important;
+}
+
+/* Card Styling */
+article,
+.card {
+    background-color: var(--card-bg) !important;
+    border: 1px solid var(--border-color);
+    color: var(--text-main) !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Text visibility inside cards */
+article p,
+article li,
+article td,
+article span {
+    color: var(--text-main);
+}
+
+article small,
+.muted {
+    color: var(--text-muted) !important;
+}
+
+/* Grid Layout */
 .grid-col-2 {
     grid-column: span 2;
 }
 
+/* Tables */
 table {
     font-size: 0.9em;
+    color: var(--text-main);
 }
 
-td, th {
-    padding: 0.5rem;
+thead th {
+    color: var(--text-muted);
+    border-bottom: 2px solid var(--border-color);
+}
+
+td,
+th {
+    padding: 0.75rem 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+tr:hover td {
+    background-color: rgba(255, 255, 255, 0.05);
+    /* Slight highlight on hover */
+}
+
+
+/* Status Indicators */
+.status-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 8px;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
+}
+
+.status-ok {
+    background-color: var(--success);
+    box-shadow: 0 0 8px var(--success);
+}
+
+.status-error {
+    background-color: var(--error);
+    box-shadow: 0 0 8px var(--error);
+}
+
+.status-warn {
+    background-color: var(--warning);
+    box-shadow: 0 0 8px var(--warning);
+}
+
+.status-inactive {
+    background-color: var(--text-muted);
+}
+
+/* Navigation */
+nav {
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--card-bg);
+    padding-bottom: 0;
+}
+
+nav ul li strong {
+    color: var(--primary) !important;
+    font-size: 1.2rem;
+}
+
+/* Utilities */
+.text-success {
+    color: var(--success) !important;
+}
+
+.text-error {
+    color: var(--error) !important;
+}
+
+.text-warning {
+    color: var(--warning) !important;
+}
+
+.font-mono {
+    font-family: 'Courier New', Courier, monospace;
+}
+
+/* Scrollbar for logs */
+.logs-container {
+    max-height: 300px;
+    overflow-y: auto;
+    background-color: #000;
+    /* Deep black for console */
+    padding: 1rem;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    font-family: monospace;
+    font-size: 0.85em;
+}
+
+.logs-container div {
+    border-bottom: none;
+    padding: 2px 0;
+    color: #cbd5e1;
+    /* Light gray text */
+}
+
+/* Scrollbar custom styles */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
 }

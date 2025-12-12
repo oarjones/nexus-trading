@@ -25,7 +25,7 @@ sys.path.insert(0, str(project_root))
 
 from dotenv import load_dotenv
 from common import BaseMCPServer
-from tools import calculate_indicators_tool, get_regime_tool, find_sr_levels_tool
+from .tools import calculate_indicators_tool, get_regime_tool, find_sr_levels_tool
 
 # Configure logging
 logging.basicConfig(

@@ -25,7 +25,7 @@ sys.path.insert(0, str(project_root))
 
 from dotenv import load_dotenv
 from common import BaseMCPServer, load_config
-from tools import check_limits_tool, calculate_size_tool, get_exposure_tool
+from .tools import check_limits_tool, calculate_size_tool, get_exposure_tool
 
 # Configure logging
 logging.basicConfig(
@@ -196,7 +196,7 @@ async def main():
     load_dotenv()
     
     # Create and run server
-    config_path = 'config/mcp-servers.yaml'
+    config_path = os.getenv("MCP_CONFIG_PATH", "config/mcp-servers.yaml")
     server = RiskServer(config_path)
     
     logger.info("=" * 60)

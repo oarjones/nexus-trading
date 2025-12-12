@@ -40,7 +40,7 @@ risk:
 # IBKR Trading Server (Port 3004)
 ibkr:
   port: 3004
-  host: ${IBKR_HOST:-127.0.0.1}
+  gateway_host: ${IBKR_HOST:-127.0.0.1}
   tws_port: ${IBKR_PORT:-4002}  # 4002=IB Gateway paper, 4001=Gateway live
   client_id: 1
   timeout: 30

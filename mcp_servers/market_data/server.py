@@ -25,7 +25,7 @@ sys.path.insert(0, str(project_root))
 
 from dotenv import load_dotenv
 from common import BaseMCPServer
-from tools import get_quote_tool, get_ohlcv_tool, get_symbols_tool
+from .tools import get_quote_tool, get_ohlcv_tool, get_symbols_tool
 
 # Configure logging
 logging.basicConfig(

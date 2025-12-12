@@ -33,14 +33,14 @@ sys.path.insert(0, str(project_root))
 
 from dotenv import load_dotenv
 from common import BaseMCPServer, load_config
-from tools import (
+from .tools import (
     get_account_tool,
     get_positions_tool,
     place_order_tool,
     cancel_order_tool,
     get_order_status_tool
 )
-from tools.connection import IBKRConnection
+from .tools.connection import IBKRConnection
 
 # Configure logging
 logging.basicConfig(
@@ -85,7 +85,7 @@ class IBKRServer(BaseMCPServer):
         self.max_order_value = ibkr_config.get('max_order_value', 10000)
         
         # Connection settings
-        host = ibkr_config.get('host', '127.0.0.1')
+        host = ibkr_config.get('gateway_host', '127.0.0.1')
         port = ibkr_config.get('tws_port', 7497)  # 7497=paper, 7496=live
         client_id = ibkr_config.get('client_id', 1)
         timeout = ibkr_config.get('timeout', 30)
@@ -284,7 +284,7 @@ async def main():
     load_dotenv()
     
     # Create and run server
-    config_path = 'config/mcp-servers.yaml'
+    config_path = os.getenv("MCP_CONFIG_PATH", "config/mcp-servers.yaml")
     server = IBKRServer(config_path)
     
     logger.info("=" * 60)

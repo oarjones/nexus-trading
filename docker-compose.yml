@@ -15,7 +15,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./init-scripts:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U trading -d trading"]
+      test: [ "CMD-SHELL", "pg_isready -U trading -d trading" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -30,7 +30,7 @@ services:
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -51,7 +51,7 @@ services:
     volumes:
       - influx_data:/var/lib/influxdb2
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8086/ping"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8086/ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -83,6 +83,7 @@ services:
     environment:
       - DATABASE_URL=${DATABASE_URL}
       - REDIS_URL=redis://redis:6379/0
+      - MCP_TRANSPORT=http
     command: python -m market_data.server
     working_dir: /app/mcp_servers
     depends_on:
@@ -102,6 +103,7 @@ services:
     container_name: mcp_technical
     environment:
       - DATABASE_URL=${DATABASE_URL}
+      - MCP_TRANSPORT=http
     command: python -m technical.server
     working_dir: /app/mcp_servers
     depends_on:
@@ -117,6 +119,11 @@ services:
       context: .
       dockerfile: mcp_servers/Dockerfile
     container_name: mcp_risk
+    environment:
+      - MCP_CONFIG_PATH=/app/config/mcp-servers.yaml
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - MCP_TRANSPORT=http
     command: python -m risk.server
     working_dir: /app/mcp_servers
     restart: unless-stopped
@@ -130,9 +137,13 @@ services:
       dockerfile: mcp_servers/Dockerfile
     container_name: mcp_ibkr
     environment:
-      - IBKR_HOST=${IBKR_HOST:-host.docker.internal}
+      - IBKR_HOST=host.docker.internal
       - IBKR_PORT=${IBKR_PORT:-4002}
       - IBKR_CLIENT_ID=${IBKR_CLIENT_ID:-1}
+      - MCP_CONFIG_PATH=/app/config/mcp-servers.yaml
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - MCP_TRANSPORT=http
     command: python -m ibkr.server
     working_dir: /app/mcp_servers
     extra_hosts:
@@ -147,6 +158,11 @@ services:
       context: .
       dockerfile: mcp_servers/Dockerfile
     container_name: mcp_ml_models
+    environment:
+      - MCP_CONFIG_PATH=/app/config/mcp-servers.yaml
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - MCP_TRANSPORT=http
     ports:
       - "3005:3005"
     command: python -m ml_models.server
@@ -158,7 +174,6 @@ services:
 networks:
   trading_network:
     driver: bridge
-
 
 volumes:
   postgres_data:

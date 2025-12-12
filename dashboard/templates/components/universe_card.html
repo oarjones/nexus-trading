@@ -1,37 +1,37 @@
-<article>
-    <header>Active Universe</header>
-    
-    {% if universe.active_symbols %}
-    <div style="max-height: 150px; overflow-y: auto;">
-        <table role="grid">
-            <thead>
-                <tr>
-                    <th>Ticker</th>
-                    <th>Sector</th>
-                    <th>Tier</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for sym in universe.active_symbols %}
-                <tr>
-                    <td><strong>{{ sym.ticker }}</strong></td>
-                    <td>{{ sym.sector }}</td>
-                    <td>{{ sym.liquidity_tier }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    
-    <footer style="font-size: 0.8em;">
-        Total Active: {{ universe.active_symbols|length }} / {{ universe.master_universe_count|default('?') }}
-        <br>
-        Liquidity Filter: {{ universe.filters_applied.liquidity_passed|default('?') }} passed
-    </footer>
-    
-    {% else %}
-    <p>No active universe data available.</p>
-    {% endif %}
-    
-    <div hx-get="/components/universe" hx-trigger="every 60s" hx-target="this" hx-swap="outerHTML" style="display:none"></div>
-</article>
+<div hx-get="/components/universe" hx-trigger="every 60s" hx-target="this" hx-swap="outerHTML">
+    <article>
+        <header>Active Universe</header>
+
+        {% if universe.active_symbols %}
+        <div style="max-height: 150px; overflow-y: auto;">
+            <table role="grid">
+                <thead>
+                    <tr>
+                        <th>Ticker</th>
+                        <th>Sector</th>
+                        <th>Tier</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sym in universe.active_symbols %}
+                    <tr>
+                        <td><strong>{{ sym.ticker }}</strong></td>
+                        <td>{{ sym.sector }}</td>
+                        <td>{{ sym.liquidity_tier }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <footer style="font-size: 0.8em;">
+            Total Active: {{ universe.active_symbols|length }} / {{ universe.master_universe_count|default('?') }}
+            <br>
+            Liquidity Filter: {{ universe.filters_applied.liquidity_passed|default('?') }} passed
+        </footer>
+
+        {% else %}
+        <p>No active universe data available.</p>
+        {% endif %}
+    </article>
+</div>

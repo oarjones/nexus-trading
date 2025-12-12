@@ -4,11 +4,17 @@ Dashboard Application Entry Point.
 FastAPI app serving the monitoring dashboard.
 """
 
+import sys
+from pathlib import Path
+
+# Add project root to python path to allow importing dashboard modules
+BASE_DIR = Path(__file__).resolve().parent.parent
+sys.path.append(str(BASE_DIR))
+
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
-from pathlib import Path
 
 from dashboard.services.data_service import get_data_service
 from dashboard.services.log_service import get_log_service

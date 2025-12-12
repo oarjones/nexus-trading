@@ -49,7 +49,7 @@ class StrategyLab:
             servers_config=self.mcp_servers
         )
         self.universe_manager = UniverseManager(
-            registry=self.registry,
+            symbol_registry=self.registry,
             data_provider=self.data_adapter
         )
         
