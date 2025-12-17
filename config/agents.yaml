@@ -2,7 +2,7 @@
 # config/agents.yaml
 
 # Provider activo
-active_provider: "claude"
+active_provider: "claude_cli"
 
 # Nivel de autonomía global
 # Options: conservative, moderate, experimental
@@ -25,3 +25,7 @@ providers:
     model: "gemini-1.5-pro"
     max_tokens: 8192
     temperature: 0.0
+
+  claude_cli:
+    model: "claude-3-5-sonnet-20240620" # CLI autoselencts usually, but good to have
+    timeout: 120.0
