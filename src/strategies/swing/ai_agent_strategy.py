@@ -20,10 +20,12 @@ from src.strategies.interfaces import (
 from src.agents.llm.factory import LLMAgentFactory
 from src.agents.llm.context_builder import ContextBuilder
 from src.agents.llm.interfaces import AutonomyLevel
+from src.agents.llm.config import LLMAgentConfig
 
 from src.agents.mcp_client import MCPClient, MCPServers
 
 from src.trading.paper import PaperPortfolioManager, PaperPortfolioProvider
+from src.strategies.registry import register_strategy
 
 # Type check import
 from src.trading.paper.provider import PortfolioProvider
@@ -31,6 +33,7 @@ from src.trading.paper.provider import PortfolioProvider
 logger = logging.getLogger(__name__)
 
 
+@register_strategy("ai_agent_swing")
 class AIAgentStrategy(TradingStrategy):
     """
     Estrategia que delega las decisiones a un AI Agent.
@@ -44,15 +47,16 @@ class AIAgentStrategy(TradingStrategy):
         self.symbols = self.config.get("symbols", ["SPY", "QQQ", "IWM"])
         
         # Inicializar componentes
-        self.agent = LLMAgentFactory.create_from_config_object(self.agent_config) if self.agent_config else LLMAgentFactory.create()
+        if self.agent_config:
+            self.agent = LLMAgentFactory.create(**self.agent_config)
+        else:
+            self.agent = LLMAgentFactory.create()
         
         # Initialize MCP
         self.mcp_client = MCPClient()
         self.mcp_servers = MCPServers.from_env()
         
-        # Initialize MCP
-        self.mcp_client = MCPClient()
-        self.mcp_servers = MCPServers.from_env()
+
         
         # Portfolio Provider Injection
         # Default to None, will be injected by StrategyRunner or create fallback
@@ -60,6 +64,10 @@ class AIAgentStrategy(TradingStrategy):
         
         # Fallback ContextBuilder pending provider injection
         self._context_builder = None
+        
+        # State
+        self._last_decision = None
+        self._last_signals = []
 
     def set_portfolio_provider(self, provider: PortfolioProvider):
         """Inject dependency."""
@@ -88,8 +96,7 @@ class AIAgentStrategy(TradingStrategy):
             )
         return self._context_builder
         
-        # Estado
-        self._last_decision = None
+
         
     @property
     def strategy_id(self) -> str:
@@ -137,9 +144,13 @@ class AIAgentStrategy(TradingStrategy):
     async def _execute_agent_flow(self, market_context: MarketContext, autonomy: AutonomyLevel):
         """Flujo asíncrono del agente."""
         # 1. Construir contexto enriquecido
+        # Extraer notas del contexto de mercado si existen (útil para testing o instrucciones manuales)
+        notes = market_context.metadata.get("notes") if market_context and market_context.metadata else None
+        
         agent_context = await self.context_builder.build(
             symbols=self.symbols,
-            autonomy_level=autonomy
+            autonomy_level=autonomy,
+            notes=notes
         )
         
         # 2. Obtener decisión

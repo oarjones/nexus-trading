@@ -29,6 +29,8 @@ from .config import get_strategy_config
 
 # Import strategies to ensure registration
 import src.strategies.swing.hmm_rules_strategy
+import src.strategies.swing.ai_agent_strategy
+from src.agents.mcp_client import MCPServers
 
 
 logger = logging.getLogger("strategy.runner")
@@ -77,6 +79,7 @@ class StrategyRunner:
             universe_manager: Gestor de universo de símbolos (opcional)
         """
         self.mcp = mcp_client
+        self.mcp_servers = MCPServers.from_env()
         self.bus = message_bus
         self.db = db_session
         self.config = get_strategy_config(config_path)
@@ -388,9 +391,9 @@ class StrategyRunner:
         """
         try:
             response = await self.mcp.call(
-                server="mcp-ml-models",
-                tool="get_regime",
-                params={}
+                self.mcp_servers.ml_models,
+                "get_regime",
+                {}
             )
             return response
         except Exception as e:
@@ -427,9 +430,9 @@ class StrategyRunner:
             try:
                 # Obtener precio actual y OHLCV histórico
                 ohlcv = await self.mcp.call(
-                    server="mcp-market-data",
-                    tool="get_ohlcv",
-                    params={
+                    self.mcp_servers.market_data,
+                    "get_ohlcv",
+                    {
                         "symbol": symbol,
                         "timeframe": "1d",
                         "limit": 300  # ~1 año
@@ -438,9 +441,9 @@ class StrategyRunner:
                 
                 # Obtener indicadores técnicos
                 indicators = await self.mcp.call(
-                    server="mcp-technical",
-                    tool="get_indicators",
-                    params={
+                    self.mcp_servers.technical,
+                    "get_indicators",
+                    {
                         "symbol": symbol,
                         "indicators": [
                             "rsi_14",

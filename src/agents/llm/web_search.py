@@ -97,7 +97,9 @@ class WebSearchClient:
                         return []
                         
                     data = await response.json()
-                    return self._parse_response(data)
+                    results = self._parse_response(data)
+                    logger.debug(f"SEARCH RESULTS for '{query}':\n{[r.to_string() for r in results]}")
+                    return results
                     
         except Exception as e:
             logger.error(f"Search request failed: {e}")

@@ -57,6 +57,16 @@ class MarketDataServer(BaseMCPServer):
         
         self.redis_url = redis_url
         
+        # Initialize IBKR Provider (Client ID 2 to avoid conflict with Execution Server)
+        # We import here to avoid circular dependencies if any
+        try:
+            from src.data.providers.ibkr import IBKRProvider
+            self.ibkr = IBKRProvider(client_id=2, port=7497) # Paper port default
+            logger.info("IBKR Provider initialized for Market Data (Client ID 2)")
+        except ImportError as e:
+            logger.warning(f"Could not import IBKRProvider: {e}")
+            self.ibkr = None
+        
         # Register tools
         self._register_tools()
         
@@ -138,7 +148,7 @@ class MarketDataServer(BaseMCPServer):
     
     async def _get_quote(self, args: dict) -> dict:
         """Wrapper for get_quote_tool."""
-        return await get_quote_tool(args, self.get_db_engine(), self.redis_url)
+        return await get_quote_tool(args, self.get_db_engine(), self.redis_url, self.ibkr)
     
     async def _get_ohlcv(self, args: dict) -> dict:
         """Wrapper for get_ohlcv_tool."""
@@ -173,7 +183,20 @@ async def main():
     logger.info("=" * 60)
     logger.info("Starting server...")
     
-    await server.run()
+    logger.info("Starting server...")
+    
+    # Connect IBKR if available
+    if server.ibkr:
+        try:
+            await server.ibkr.connect()
+        except Exception as e:
+            logger.error(f"Failed to connect IBKR provider: {e}")
+
+    try:
+        await server.run()
+    finally:
+        if server.ibkr:
+            server.ibkr.disconnect()
 
 
 if __name__ == "__main__":

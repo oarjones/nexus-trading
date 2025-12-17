@@ -1,0 +1,121 @@
+{
+  "records": [
+    {
+      "timestamp": "2025-12-17T05:21:09.667975+00:00",
+      "event_type": "llm_call",
+      "agent_id": "claude_agent_claude-sonnet-4-5-20250929",
+      "model": "claude-sonnet-4-5-20250929",
+      "tokens": {
+        "input_tokens": 2102,
+        "output_tokens": 614,
+        "model_id": "claude-sonnet-4-5-20250929"
+      },
+      "search_queries": 0,
+      "cost_usd": 0.015516,
+      "context": "Loop 0"
+    },
+    {
+      "timestamp": "2025-12-17T05:28:14.146776+00:00",
+      "event_type": "llm_call",
+      "agent_id": "claude_agent_claude-sonnet-4-5-20250929",
+      "model": "claude-sonnet-4-5-20250929",
+      "tokens": {
+        "input_tokens": 2149,
+        "output_tokens": 211,
+        "model_id": "claude-sonnet-4-5-20250929"
+      },
+      "search_queries": 0,
+      "cost_usd": 0.009611999999999999,
+      "context": "Loop 0"
+    },
+    {
+      "timestamp": "2025-12-17T05:28:14.147774+00:00",
+      "event_type": "web_search",
+      "agent_id": "claude_agent_claude-sonnet-4-5-20250929",
+      "model": "brave_search",
+      "tokens": null,
+      "search_queries": 1,
+      "cost_usd": 0.005,
+      "context": "SPY market sentiment news December 16 2025 analysis"
+    },
+    {
+      "timestamp": "2025-12-17T05:28:15.265490+00:00",
+      "event_type": "web_search",
+      "agent_id": "claude_agent_claude-sonnet-4-5-20250929",
+      "model": "brave_search",
+      "tokens": null,
+      "search_queries": 1,
+      "cost_usd": 0.005,
+      "context": "US stock market December 16 2025 SPY QQQ trading outlook"
+    },
+    {
+      "timestamp": "2025-12-17T05:28:38.928727+00:00",
+      "event_type": "llm_call",
+      "agent_id": "claude_agent_claude-sonnet-4-5-20250929",
+      "model": "claude-sonnet-4-5-20250929",
+      "tokens": {
+        "input_tokens": 4034,
+        "output_tokens": 952,
+        "model_id": "claude-sonnet-4-5-20250929"
+      },
+      "search_queries": 0,
+      "cost_usd": 0.026382000000000003,
+      "context": "Loop 2"
+    },
+    {
+      "timestamp": "2025-12-17T05:32:33.315586+00:00",
+      "event_type": "llm_call",
+      "agent_id": "claude_agent_claude-sonnet-4-5-20250929",
+      "model": "claude-sonnet-4-5-20250929",
+      "tokens": {
+        "input_tokens": 2149,
+        "output_tokens": 210,
+        "model_id": "claude-sonnet-4-5-20250929"
+      },
+      "search_queries": 0,
+      "cost_usd": 0.009597,
+      "context": "Loop 0"
+    },
+    {
+      "timestamp": "2025-12-17T05:32:33.315586+00:00",
+      "event_type": "web_search",
+      "agent_id": "claude_agent_claude-sonnet-4-5-20250929",
+      "model": "brave_search",
+      "tokens": null,
+      "search_queries": 1,
+      "cost_usd": 0.005,
+      "context": "SPY market news December 16 2025 sentiment analysis"
+    },
+    {
+      "timestamp": "2025-12-17T05:32:34.315659+00:00",
+      "event_type": "web_search",
+      "agent_id": "claude_agent_claude-sonnet-4-5-20250929",
+      "model": "brave_search",
+      "tokens": null,
+      "search_queries": 1,
+      "cost_usd": 0.005,
+      "context": "US stock market December 16 2025 SPY QQQ closing analysis"
+    },
+    {
+      "timestamp": "2025-12-17T05:32:53.049083+00:00",
+      "event_type": "llm_call",
+      "agent_id": "claude_agent_claude-sonnet-4-5-20250929",
+      "model": "claude-sonnet-4-5-20250929",
+      "tokens": {
+        "input_tokens": 3210,
+        "output_tokens": 732,
+        "model_id": "claude-sonnet-4-5-20250929"
+      },
+      "search_queries": 0,
+      "cost_usd": 0.02061,
+      "context": "Loop 2"
+    }
+  ],
+  "summary": {
+    "total_cost_usd": 0.10171700000000002,
+    "total_tokens": 16363,
+    "total_searches": 4,
+    "total_records": 9,
+    "last_updated": "2025-12-17T05:32:53.049645+00:00"
+  }
+}

@@ -1,0 +1,147 @@
+# =============================================================================
+# CONFIGURACIÓN DEL SISTEMA DE COMPETICIÓN DE TRADING
+# =============================================================================
+# config/competition.yaml
+
+competition:
+  name: "Nexus Trading Championship 2025"
+  initial_capital: 25000.0
+  duration_days: 30
+  
+# -----------------------------------------------------------------------------
+# HORARIOS (Eastern Time - ET)
+# -----------------------------------------------------------------------------
+schedule:
+  # Hora de inicio de la sesión diaria (después de apertura)
+  session_start: "10:00"
+  
+  # Fin de la ventana de trading (solo nuevas entradas)
+  trading_window_end: "11:30"
+  
+  # Cierre de mercado
+  market_close: "16:00"
+  
+  # Zona horaria
+  timezone: "America/New_York"
+  
+  # Días de trading (lunes=0, domingo=6)
+  trading_days: [0, 1, 2, 3, 4]  # Lunes a Viernes
+
+# -----------------------------------------------------------------------------
+# MONITOREO DE POSICIONES
+# -----------------------------------------------------------------------------
+monitoring:
+  # Intervalo de verificación de SL/TP (minutos)
+  interval_minutes: 5
+  
+  # Solo monitorear durante horario de mercado
+  market_hours_only: true
+  
+  # Verificación inmediata al recibir señal
+  immediate_check_on_signal: true
+
+# -----------------------------------------------------------------------------
+# EJECUCIÓN DE ÓRDENES
+# -----------------------------------------------------------------------------
+orders:
+  # Tipo de orden por defecto
+  # LIMIT: Espera al precio indicado
+  # MARKET: Ejecuta inmediatamente al precio actual
+  default_type: "LIMIT"
+  
+  # Tolerancia para ejecutar orden límite (%)
+  # Si precio actual está dentro de este %, ejecutar como market
+  entry_tolerance_pct: 1.0
+  
+  # Expiración de órdenes límite (horas)
+  limit_order_expiry_hours: 2
+  
+  # Slippage simulado para paper trading (%)
+  simulated_slippage_pct: 0.05
+
+# -----------------------------------------------------------------------------
+# GESTIÓN DE RIESGO
+# -----------------------------------------------------------------------------
+risk:
+  # Tamaño máximo de posición (% del portfolio)
+  max_position_pct: 20.0
+  
+  # Número máximo de posiciones simultáneas
+  max_positions: 5
+  
+  # Trades máximos por día
+  max_daily_trades: 3
+  
+  # Stop loss máximo permitido (% del precio de entrada)
+  max_stop_loss_pct: 3.0
+  
+  # Ratio Riesgo/Beneficio mínimo
+  min_risk_reward_ratio: 2.0
+  
+  # Pérdida máxima diaria (% del portfolio) - Circuit breaker
+  max_daily_loss_pct: 5.0
+
+# -----------------------------------------------------------------------------
+# AGENTE CLAUDE
+# -----------------------------------------------------------------------------
+agent:
+  # Modelo a usar
+  model: "claude-sonnet-4-5"
+  
+  # Timeout para cada llamada (segundos)
+  timeout_seconds: 180
+  
+  # Usar prompt de competición
+  use_competition_prompt: true
+  
+  # Archivo de estado del agente
+  state_file: "./data/competition/agent_state.json"
+
+# -----------------------------------------------------------------------------
+# PERSISTENCIA Y REPORTES
+# -----------------------------------------------------------------------------
+storage:
+  # Directorio base para datos de competición
+  base_dir: "./data/competition"
+  
+  # Directorio de reportes
+  reports_dir: "./data/competition/reports"
+  
+  # Directorio de logs de sesiones
+  sessions_dir: "./data/competition/sessions"
+  
+  # Retención de histórico (días)
+  history_retention_days: 90
+
+# -----------------------------------------------------------------------------
+# LOGGING
+# -----------------------------------------------------------------------------
+logging:
+  level: "INFO"
+  
+  # Log a archivo
+  file_enabled: true
+  file_path: "./logs/competition.log"
+  
+  # Formato
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# -----------------------------------------------------------------------------
+# NOTIFICACIONES (FUTURO)
+# -----------------------------------------------------------------------------
+notifications:
+  enabled: false
+  
+  telegram:
+    enabled: false
+    bot_token: ""
+    chat_id: ""
+    
+  # Eventos a notificar
+  events:
+    session_start: true
+    session_end: true
+    trade_executed: true
+    stop_loss_hit: true
+    take_profit_hit: true
+    daily_summary: true

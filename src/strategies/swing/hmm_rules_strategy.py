@@ -66,8 +66,11 @@ class HMMRulesStrategy(TradingStrategy):
                 rsi = indicators.get("RSI")
                 
                 if price is None or rsi is None:
+                    logger.warning(f"Missing data for {symbol}: Price={price}, RSI={rsi}")
                     continue
-                    
+                
+                logger.info(f"HMM Debug {symbol}: Regime={regime}, RSI={rsi:.2f}")
+
                 # Lógica BULL
                 if regime == MarketRegime.BULL:
                     bull_rules = rules.get("bull", {})

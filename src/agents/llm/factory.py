@@ -13,6 +13,8 @@ import logging
 from .interfaces import LLMAgent, AutonomyLevel
 from .config import LLMAgentConfig, load_agent_config
 from .agents.claude_agent import ClaudeAgent
+from .agents.claude_cli_agent import ClaudeCliAgent
+from .agents.competition_agent import CompetitionClaudeAgent
 
 
 logger = logging.getLogger(__name__)
@@ -21,6 +23,8 @@ logger = logging.getLogger(__name__)
 # Registry de implementaciones disponibles
 _AGENT_REGISTRY: dict[str, Type[LLMAgent]] = {
     "claude": ClaudeAgent,
+    "claude_cli": CompetitionClaudeAgent,  # Usar el nuevo agente de competición
+    "competition": CompetitionClaudeAgent,  # Alias
     # Futuras implementaciones:
     # "openai": OpenAIAgent,
     # "gemini": GeminiAgent,
@@ -93,6 +97,17 @@ class LLMAgentFactory:
                 default_autonomy=AutonomyLevel(config.autonomy_level),
                 timeout_seconds=provider_config.get("timeout", 60.0),
             )
+            
+        if provider == "claude_cli":
+            # return ClaudeCliAgent(
+            #     model=provider_config.get("model", "claude-sonnet-4-5"),
+            #     timeout_seconds=provider_config.get("timeout", 120.0),
+            # )
+            # USE COMPETITION AGENT AS REQUESTED
+            return CompetitionClaudeAgent(
+                model=provider_config.get("model", "claude-sonnet-4-5"),
+                timeout_seconds=provider_config.get("timeout", 120.0),
+            )
         
         # Placeholder para otros providers
         raise NotImplementedError(f"Provider {provider} not yet implemented")
@@ -144,10 +159,16 @@ class LLMAgentFactory:
             return ClaudeAgent(
                 api_key=final_api_key,
                 model=final_model,
-                max_tokens=kwargs.get("max_tokens", provider_defaults.get("max_tokens", 2000)),
                 temperature=kwargs.get("temperature", provider_defaults.get("temperature", 0.3)),
                 default_autonomy=autonomy,
                 timeout_seconds=kwargs.get("timeout", 60.0),
+            )
+            
+        if provider == "claude_cli":
+            return CompetitionClaudeAgent(
+                model=kwargs.get("model", "claude-sonnet-4-5"),
+                timeout_seconds=kwargs.get("timeout", 120.0),
+                cwd=kwargs.get("cwd")
             )
         
         raise NotImplementedError(f"Provider {provider} not yet implemented")
@@ -164,9 +185,15 @@ class LLMAgentFactory:
             "claude": "ANTHROPIC_API_KEY",
             "openai": "OPENAI_API_KEY",
             "gemini": "GOOGLE_API_KEY",
+            "claude_cli": None, # No API key needed
         }
         
         env_var = env_vars.get(provider)
+        
+        # Provider explicitamente sin key requerida
+        if provider in env_vars and env_var is None:
+            return ""
+
         if env_var:
             api_key = os.environ.get(env_var)
             if api_key:

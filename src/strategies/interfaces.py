@@ -209,6 +209,7 @@ class MarketContext:
     
     # Metadatos
     timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    metadata: dict = field(default_factory=dict)
 
 
 class TradingStrategy(ABC):

@@ -84,6 +84,8 @@ services:
       - DATABASE_URL=${DATABASE_URL}
       - REDIS_URL=redis://redis:6379/0
       - MCP_TRANSPORT=http
+    ports:
+      - "3001:3001"
     command: python -m market_data.server
     working_dir: /app/mcp_servers
     depends_on:
@@ -104,6 +106,8 @@ services:
     environment:
       - DATABASE_URL=${DATABASE_URL}
       - MCP_TRANSPORT=http
+    ports:
+      - "3002:3002"
     command: python -m technical.server
     working_dir: /app/mcp_servers
     depends_on:
@@ -124,6 +128,8 @@ services:
       - DATABASE_URL=${DATABASE_URL}
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - MCP_TRANSPORT=http
+    ports:
+      - "3003:3003"
     command: python -m risk.server
     working_dir: /app/mcp_servers
     restart: unless-stopped
@@ -144,6 +150,8 @@ services:
       - DATABASE_URL=${DATABASE_URL}
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - MCP_TRANSPORT=http
+    ports:
+      - "3004:3004"
     command: python -m ibkr.server
     working_dir: /app/mcp_servers
     extra_hosts:

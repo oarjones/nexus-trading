@@ -14,7 +14,7 @@ from sqlalchemy import create_engine, text
 logger = logging.getLogger(__name__)
 
 
-async def get_quote_tool(args: Dict[str, Any], engine, redis_url: str) -> Dict[str, Any]:
+async def get_quote_tool(args: Dict[str, Any], engine, redis_url: str, ibkr_provider=None) -> Dict[str, Any]:
     """
     Get current quote for a symbol.
     
@@ -97,8 +97,30 @@ async def get_quote_tool(args: Dict[str, Any], engine, redis_url: str) -> Dict[s
                     'source': 'database'
                 }
             else:
+                # Fallback to IBKR if available
+                if ibkr_provider and ibkr_provider.is_connected():
+                    try:
+                        logger.info(f"Fetching live quote for {symbol} from IBKR...")
+                        quote = await ibkr_provider.get_quote(symbol)
+                        if quote:
+                            quote['source'] = 'ibkr'
+                            return quote
+                    except Exception as e:
+                        logger.warning(f"IBKR fallback failed for {symbol}: {e}")
+
                 raise ValueError(f"No data found for symbol: {symbol}")
     
     except Exception as e:
+        # Check IBKR one last time if DB failed specifically
+        if ibkr_provider and ibkr_provider.is_connected():
+             try:
+                logger.info(f"Fetching live quote for {symbol} from IBKR (after DB error)...")
+                quote = await ibkr_provider.get_quote(symbol)
+                if quote:
+                    quote['source'] = 'ibkr'
+                    return quote
+             except Exception as sub_e:
+                 logger.warning(f"IBKR fallback failed after DB error for {symbol}: {sub_e}")
+
         logger.error(f"Database error getting quote for {symbol}: {e}")
         raise

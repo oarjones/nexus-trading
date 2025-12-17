@@ -96,3 +96,14 @@ class StrategyScheduler:
         if self.scheduler.running:
             self.scheduler.shutdown()
             logger.info("Strategy Scheduler detenido.")
+
+    @property
+    def next_run_time(self):
+        """Obtener la próxima fecha de ejecución programada (de cualquier job)."""
+        jobs = self.scheduler.get_jobs()
+        if not jobs:
+            return None
+        
+        # Buscar el job con la ejecución más próxima
+        next_times = [job.next_run_time for job in jobs if job.next_run_time]
+        return min(next_times) if next_times else None

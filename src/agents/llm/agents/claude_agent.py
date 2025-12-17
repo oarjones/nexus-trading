@@ -136,6 +136,7 @@ class ClaudeAgent(LLMAgent):
             while True:
                 # 3. Llamada a la API
                 logger.info(f"Calling Claude ({self._model}) [Loop {search_count}]")
+                logger.debug(f"FULL PROMPT:\n{json.dumps(messages, indent=2, default=str)}")
                 
                 # Check if we should disable tools (reached limit)
                 tools = [self.WEB_SEARCH_TOOL] if search_count < MAX_SEARCHES else []
@@ -161,6 +162,7 @@ class ClaudeAgent(LLMAgent):
                 # Process response
                 stop_reason = response.stop_reason
                 content_blocks = response.content
+                logger.debug(f"CLAUDE RESPONSE:\n{content_blocks}")
                 
                 # Add assistant response to history
                 # Convert blocks to simple list of dicts for message history

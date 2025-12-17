@@ -16,7 +16,7 @@ strategies:
   
   # ETF Momentum - Swing Trading
   etf_momentum:
-    enabled: true
+    enabled: false
     description: "Momentum multi-timeframe en ETFs"
     
     # Mercados
@@ -91,7 +91,7 @@ strategies:
 
   # HMM Rules Strategy (Fase 2.1)
   hmm_rules:
-    enabled: true
+    enabled: false
     description: "Estrategia sistemática basada en régimen HMM"
     
     markets:
@@ -124,7 +124,7 @@ strategies:
     schedule:
       type: "cron"
       days: "mon-fri"
-      time: "10:00" # Ejecutar a las 10:00 UTC (ejemplo)
+      time: "15:00" # Ejecutar a las 15:00 UTC (16:00 CET - Mercado Abierto)
       # Nota: Para testing en loop usaremos interval en runner manual, pero esto config scheduler
 
   # AI Agent Swing (Fase B2)
@@ -139,10 +139,11 @@ strategies:
 
     autonomy_level: conservative
     agent_config:
-      provider: "claude"
-      model: "claude-3-5-sonnet-20240620"
-      max_tokens: 4096
-      temperature: 0.0
+      provider: "claude_cli"
+      model: "claude-sonnet-4-5" # Modelo por defecto de claude code
+      max_tokens: 4000
+      temperature: 0.3
+      timeout: 120
     
     symbols:
       - SPY
